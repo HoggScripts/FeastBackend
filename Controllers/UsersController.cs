@@ -11,6 +11,9 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Web;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
 
 namespace Feast.Controllers
 {
@@ -34,81 +37,81 @@ namespace Feast.Controllers
             _configuration = configuration;
         }
 
-       [HttpPost("register")]
-public async Task<IActionResult> Register([FromBody] RegisterModel model)
-{
-    if (!ModelState.IsValid)
-    {
-        return BadRequest(ModelState);
-    }
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-    var existingUser = await _userManager.FindByEmailAsync(model.Email);
-    if (existingUser != null)
-    {
-        return BadRequest("User already exists.");
-    }
+            var existingUser = await _userManager.FindByEmailAsync(model.Email);
+            if (existingUser != null)
+            {
+                return BadRequest("User already exists.");
+            }
 
-    var user = new ApplicationUser
-    {
-        UserName = model.Username,
-        Email = model.Email,
-        FirstName = model.FirstName,
-        LastName = model.LastName
-    };
+            var user = new ApplicationUser
+            {
+                UserName = model.Username,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                RefreshToken = GenerateRefreshToken(),
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
+            };
 
-    var result = await _userManager.CreateAsync(user, model.Password);
-    if (!result.Succeeded)
-    {
-        return BadRequest(result.Errors.Select(e => e.Description));
-    }
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors.Select(e => e.Description));
+            }
 
-    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-    var encodedToken = HttpUtility.UrlEncode(token);
-    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users", new { token = encodedToken, email = user.Email }, Request.Scheme);
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = HttpUtility.UrlEncode(token);
+            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users", new { token = encodedToken, email = user.Email }, Request.Scheme);
 
-    // Log the token for debugging
-    _logger.LogInformation($"Email confirmation token for {model.Email}: {encodedToken}");
+            // Log the token for debugging
+            _logger.LogInformation($"Email confirmation token for {model.Email}: {encodedToken}");
 
-    await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
+            await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
 
-    return Ok("Registration successful. Please check your email to confirm your account.");
-}
-
-[HttpGet("confirm-email")]
-public async Task<IActionResult> ConfirmEmail(string token, string email)
-{
-    _logger.LogInformation($"Received request to confirm email with token: {token} and email: {email}");
-
-    if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(email))
-    {
-        _logger.LogWarning("Token or email is missing.");
-        return BadRequest("Token and email are required.");
-    }
-
-    var user = await _userManager.FindByEmailAsync(email);
-    if (user == null)
-    {
-        _logger.LogWarning($"No user found with email: {email}");
-        return BadRequest("Invalid request.");
-    }
-
-    // Log the token for debugging
-    _logger.LogInformation($"User found with email: {email}. Confirming email with token: {token}");
-
-    var decodedToken = HttpUtility.UrlDecode(token);
-    var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
-    if (result.Succeeded)
-    {
-        _logger.LogInformation($"Email confirmed successfully for {email}");
-        return Ok("Email confirmed successfully.");
-    }
-
-    _logger.LogWarning($"Failed to confirm email for {email}. Errors: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-    return BadRequest("Email could not be confirmed.");
-}
+            return Ok("Registration successful. Please check your email to confirm your account.");
+        }
 
 
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(string token, string email)
+        {
+            _logger.LogInformation($"Received request to confirm email with token: {token} and email: {email}");
 
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(email))
+            {
+                _logger.LogWarning("Token or email is missing.");
+                return BadRequest("Token and email are required.");
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                _logger.LogWarning($"No user found with email: {email}");
+                return BadRequest("Invalid request.");
+            }
+
+            // Log the token for debugging
+            _logger.LogInformation($"User found with email: {email}. Confirming email with token: {token}");
+
+            var decodedToken = HttpUtility.UrlDecode(token);
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"Email confirmed successfully for {email}");
+                return Ok("Email confirmed successfully.");
+            }
+
+            _logger.LogWarning($"Failed to confirm email for {email}. Errors: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            return BadRequest("Email could not be confirmed.");
+        }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
@@ -127,8 +130,25 @@ public async Task<IActionResult> ConfirmEmail(string token, string email)
             var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, false, false);
             if (result.Succeeded)
             {
-                var token = GenerateJwtToken(user);
-                return Ok(new { Token = token });
+                var accessToken = GenerateJwtToken(user);
+                var refreshToken = GenerateRefreshToken();
+
+                // Save refresh token in the database or other persistent storage
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Ensure this is in UTC
+                await _userManager.UpdateAsync(user);
+
+                // Set refresh token as an HTTP-only cookie
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // should be true in production
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddDays(7) // Ensure this is in UTC
+                };
+                Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+
+                return Ok(new { accessToken });
             }
 
             return Unauthorized("Invalid login attempt.");
@@ -140,9 +160,9 @@ public async Task<IActionResult> ConfirmEmail(string token, string email)
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName), // Username
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
+                new Claim(ClaimTypes.NameIdentifier, user.UserName) // Username
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret));
@@ -152,37 +172,72 @@ public async Task<IActionResult> ConfirmEmail(string token, string email)
                 issuer: jwtSettings.Issuer,
                 audience: jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
+                expires: DateTime.UtcNow.AddMinutes(30), // Ensure this is in UTC
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
+        private string GenerateRefreshToken()
         {
-            if (!ModelState.IsValid)
+            var randomNumber = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
             {
-                return BadRequest(ModelState);
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber);
+            }
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return Unauthorized("Refresh token is missing.");
             }
 
-            var user = await _userManager.FindByEmailAsync(model.Email);
+            var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return Unauthorized("Invalid or expired refresh token.");
+            }
+
+            var accessToken = GenerateJwtToken(user);
+            return Ok(new { accessToken });
+        }
+
+        [HttpGet("current-user")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var username = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            _logger.LogInformation($"Username from claims: {username}");
+
+            if (string.IsNullOrEmpty(username))
+            {
+                _logger.LogWarning("Unauthorized access attempt to /current-user endpoint. No Username found in claims.");
+                return Unauthorized();
+            }
+
+            var user = await _userManager.FindByNameAsync(username);
             if (user == null)
             {
-                return BadRequest("User not found.");
+                _logger.LogWarning($"Unauthorized access to /current-user: No user found with Username {username}.");
+                return Unauthorized();
             }
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var encodedToken = HttpUtility.UrlEncode(token);
-            var resetLink = Url.Action(nameof(ConfirmResetPassword), "Users", new { token = encodedToken, email = user.Email }, Request.Scheme);
+            _logger.LogInformation($"User found: {user.UserName}");
 
-            // Log the token for debugging
-            _logger.LogInformation($"Password reset token for {model.Email}: {encodedToken}");
+            var userModel = new UserModel
+            {
+                Username = user.UserName,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName
+            };
 
-            await _emailService.SendEmailAsync(user.Email, "Reset your password", resetLink);
-
-            return Ok("Password reset link has been sent to your email.");
+            return Ok(userModel);
         }
 
         [HttpPost("confirm-reset-password")]

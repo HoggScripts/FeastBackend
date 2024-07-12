@@ -13,6 +13,7 @@ using System.Web;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace Feast.Controllers
@@ -138,6 +139,9 @@ namespace Feast.Controllers
                 user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Ensure this is in UTC
                 await _userManager.UpdateAsync(user);
 
+                // Log the refresh token being stored
+                _logger.LogInformation($"Storing refresh token: {refreshToken} for user: {user.UserName}");
+
                 // Set refresh token as an HTTP-only cookie
                 var cookieOptions = new CookieOptions
                 {
@@ -148,11 +152,15 @@ namespace Feast.Controllers
                 };
                 Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
 
+                // Log setting the cookie
+                _logger.LogInformation($"Set cookie refreshToken with value: {refreshToken}");
+
                 return Ok(new { accessToken });
             }
 
             return Unauthorized("Invalid login attempt.");
         }
+
 
         private string GenerateJwtToken(ApplicationUser user)
         {
@@ -172,7 +180,7 @@ namespace Feast.Controllers
                 issuer: jwtSettings.Issuer,
                 audience: jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(30), // Ensure this is in UTC
+                expires: DateTime.UtcNow.AddMinutes(10), // Ensure this is in UTC
                 signingCredentials: creds
             );
 
@@ -192,21 +200,46 @@ namespace Feast.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
         {
+            // Log the incoming request
+            _logger.LogInformation("Received request to refresh token");
+
             var refreshToken = Request.Cookies["refreshToken"];
+    
+            // Log the received refresh token
+            _logger.LogInformation($"Received refresh token: {refreshToken}");
+
             if (string.IsNullOrEmpty(refreshToken))
             {
+                _logger.LogWarning("Refresh token is missing.");
                 return Unauthorized("Refresh token is missing.");
             }
 
             var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
-            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+    
+            // Log the user lookup result
+            if (user == null)
             {
-                return Unauthorized("Invalid or expired refresh token.");
+                _logger.LogWarning("Invalid refresh token.");
+                return Unauthorized("Invalid refresh token.");
+            }
+
+            // Log the token expiry time
+            _logger.LogInformation($"Refresh token expiry time: {user.RefreshTokenExpiryTime}, Current time: {DateTime.UtcNow}");
+
+            if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                _logger.LogWarning("Expired refresh token.");
+                return Unauthorized("Expired refresh token.");
             }
 
             var accessToken = GenerateJwtToken(user);
+    
+            // Log the new access token
+            _logger.LogInformation($"Generated new access token: {accessToken}");
+
             return Ok(new { accessToken });
         }
+
 
         [HttpGet("current-user")]
         public async Task<IActionResult> GetCurrentUser()
@@ -239,6 +272,14 @@ namespace Feast.Controllers
 
             return Ok(userModel);
         }
+        
+        [HttpGet("protected-endpoint")]
+        [Authorize]
+        public IActionResult ProtectedEndpoint()
+        {
+            return Ok(new { message = "This is protected data." });
+        }
+
 
         [HttpPost("confirm-reset-password")]
         public async Task<IActionResult> ConfirmResetPassword([FromBody] ConfirmResetPasswordModel model)

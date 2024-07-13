@@ -27,15 +27,17 @@ namespace Feast.Controllers
         private readonly EmailService _emailService;
         private readonly ILogger<UsersController> _logger;
         private readonly IConfiguration _configuration;
+        private readonly TokenService _tokenService;
 
         public UsersController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-            EmailService emailService, ILogger<UsersController> logger, IConfiguration configuration)
+            EmailService emailService, ILogger<UsersController> logger, IConfiguration configuration, TokenService tokenService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailService = emailService;
             _logger = logger;
             _configuration = configuration;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
@@ -58,7 +60,7 @@ namespace Feast.Controllers
                 Email = model.Email,
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                RefreshToken = GenerateRefreshToken(),
+                RefreshToken = _tokenService.GenerateRefreshToken(),
                 RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
             };
 
@@ -131,8 +133,8 @@ namespace Feast.Controllers
             var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, false, false);
             if (result.Succeeded)
             {
-                var accessToken = GenerateJwtToken(user);
-                var refreshToken = GenerateRefreshToken();
+                var accessToken = _tokenService.GenerateJwtToken(user);
+                var refreshToken = _tokenService.GenerateRefreshToken();
 
                 // Save refresh token in the database or other persistent storage
                 user.RefreshToken = refreshToken;
@@ -160,42 +162,7 @@ namespace Feast.Controllers
 
             return Unauthorized("Invalid login attempt.");
         }
-
-
-        private string GenerateJwtToken(ApplicationUser user)
-        {
-            var jwtSettings = _configuration.GetSection("JwtSettings").Get<JwtSettings>();
-
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName), // Username
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.UserName) // Username
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: jwtSettings.Issuer,
-                audience: jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(10), // Ensure this is in UTC
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        private string GenerateRefreshToken()
-        {
-            var randomNumber = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomNumber);
-                return Convert.ToBase64String(randomNumber);
-            }
-        }
+        
 
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
@@ -232,7 +199,7 @@ namespace Feast.Controllers
                 return Unauthorized("Expired refresh token.");
             }
 
-            var accessToken = GenerateJwtToken(user);
+            var accessToken = _tokenService.GenerateJwtToken(user);
     
             // Log the new access token
             _logger.LogInformation($"Generated new access token: {accessToken}");
@@ -278,6 +245,31 @@ namespace Feast.Controllers
         public IActionResult ProtectedEndpoint()
         {
             return Ok(new { message = "This is protected data." });
+        }
+        
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                // To prevent account enumeration attacks, consider returning Ok() even if the user is not found.
+                return Ok("If an account with the email exists, a password reset link has been sent.");
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = HttpUtility.UrlEncode(token);
+            var resetLink = Url.Action(nameof(ConfirmResetPassword), "Users", new { token = encodedToken, email = model.Email }, Request.Scheme);
+
+            // Send the reset link via email
+            await _emailService.SendEmailAsync(model.Email, "Reset Password", $"Please reset your password by clicking here: {resetLink}");
+
+            return Ok("If an account with the email exists, a password reset link has been sent.");
         }
 
 

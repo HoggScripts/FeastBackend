@@ -24,6 +24,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 // Add EmailService
 builder.Services.AddTransient<EmailService>();
 
+// Add token service
+builder.Services.AddScoped<TokenService>();
+
 // Add configuration for reading from appsettings and user secrets
 builder.Configuration.AddEnvironmentVariables();
 if (builder.Environment.IsDevelopment())
@@ -61,6 +64,7 @@ builder.Services.AddAuthentication(options =>
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+            //ClockSkew = TimeSpan.Zero // for testing purposes only -> this is the time forgiveness on expiry -> erase this line in production
         };
     });
 

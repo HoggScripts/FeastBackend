@@ -30,7 +30,8 @@ namespace Feast.Controllers
         private readonly TokenService _tokenService;
 
         public UsersController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-            EmailService emailService, ILogger<UsersController> logger, IConfiguration configuration, TokenService tokenService)
+            EmailService emailService, ILogger<UsersController> logger, IConfiguration configuration,
+            TokenService tokenService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -39,6 +40,8 @@ namespace Feast.Controllers
             _configuration = configuration;
             _tokenService = tokenService;
         }
+
+
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
@@ -72,7 +75,8 @@ namespace Feast.Controllers
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
-            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users", new { token = encodedToken, email = user.Email }, Request.Scheme);
+            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
+                new { token = encodedToken, email = user.Email }, Request.Scheme);
 
             // Log the token for debugging
             _logger.LogInformation($"Email confirmation token for {model.Email}: {encodedToken}");
@@ -112,7 +116,8 @@ namespace Feast.Controllers
                 return Ok("Email confirmed successfully.");
             }
 
-            _logger.LogWarning($"Failed to confirm email for {email}. Errors: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            _logger.LogWarning(
+                $"Failed to confirm email for {email}. Errors: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             return BadRequest("Email could not be confirmed.");
         }
 
@@ -124,45 +129,87 @@ namespace Feast.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await _userManager.FindByNameAsync(model.Username);
+            ApplicationUser user;
+
+            // Check if identifier is an email or username
+            if (model.Identifier.Contains("@"))
+            {
+                user = await _userManager.FindByEmailAsync(model.Identifier);
+            }
+            else
+            {
+                user = await _userManager.FindByNameAsync(model.Identifier);
+            }
+
             if (user != null && !await _userManager.IsEmailConfirmedAsync(user))
             {
                 return Unauthorized("Email is not confirmed.");
             }
 
-            var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, false, false);
+            var result = await _signInManager.PasswordSignInAsync(user?.UserName ?? model.Identifier, model.Password, false, false);
             if (result.Succeeded)
             {
                 var accessToken = _tokenService.GenerateJwtToken(user);
-                var refreshToken = _tokenService.GenerateRefreshToken();
 
-                // Save refresh token in the database or other persistent storage
-                user.RefreshToken = refreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // Ensure this is in UTC
-                await _userManager.UpdateAsync(user);
-
-                // Log the refresh token being stored
-                _logger.LogInformation($"Storing refresh token: {refreshToken} for user: {user.UserName}");
-
-                // Set refresh token as an HTTP-only cookie
-                var cookieOptions = new CookieOptions
+                if (model.RememberMe)
                 {
-                    HttpOnly = true,
-                    Secure = false, // should be true in production
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTime.UtcNow.AddDays(7) // Ensure this is in UTC
-                };
-                Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+                    var refreshToken = _tokenService.GenerateRefreshToken();
+                    user.RefreshToken = refreshToken;
+                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30); // Longer expiry for "Remember Me"
+                    await _userManager.UpdateAsync(user);
 
-                // Log setting the cookie
-                _logger.LogInformation($"Set cookie refreshToken with value: {refreshToken}");
+                    var cookieOptions = new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = false, // should be true in production
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTime.UtcNow.AddDays(30) // Longer expiry for "Remember Me"
+                    };
+                    Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+                }
 
                 return Ok(new { accessToken });
             }
 
             return Unauthorized("Invalid login attempt.");
         }
-        
+
+
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userName = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userName))
+            {
+                return BadRequest("User not found.");
+            }
+
+            var user = await _userManager.FindByNameAsync(userName);
+            if (user == null)
+            {
+                return BadRequest("User not found.");
+            }
+
+            // Invalidate the refresh token by setting it to an empty string or a placeholder value
+            user.RefreshToken = "Revoked"; // or any other placeholder value
+            user.RefreshTokenExpiryTime = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            // Clear the HttpOnly cookie for refresh token
+            Response.Cookies.Append("refreshToken", "", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false, // should be true in production
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(-1) // Set the expiration date in the past to clear the cookie
+            });
+
+            return Ok();
+        }
+
+
+
 
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
@@ -171,7 +218,7 @@ namespace Feast.Controllers
             _logger.LogInformation("Received request to refresh token");
 
             var refreshToken = Request.Cookies["refreshToken"];
-    
+
             // Log the received refresh token
             _logger.LogInformation($"Received refresh token: {refreshToken}");
 
@@ -182,7 +229,7 @@ namespace Feast.Controllers
             }
 
             var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
-    
+
             // Log the user lookup result
             if (user == null)
             {
@@ -191,7 +238,8 @@ namespace Feast.Controllers
             }
 
             // Log the token expiry time
-            _logger.LogInformation($"Refresh token expiry time: {user.RefreshTokenExpiryTime}, Current time: {DateTime.UtcNow}");
+            _logger.LogInformation(
+                $"Refresh token expiry time: {user.RefreshTokenExpiryTime}, Current time: {DateTime.UtcNow}");
 
             if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
@@ -200,7 +248,7 @@ namespace Feast.Controllers
             }
 
             var accessToken = _tokenService.GenerateJwtToken(user);
-    
+
             // Log the new access token
             _logger.LogInformation($"Generated new access token: {accessToken}");
 
@@ -216,7 +264,8 @@ namespace Feast.Controllers
 
             if (string.IsNullOrEmpty(username))
             {
-                _logger.LogWarning("Unauthorized access attempt to /current-user endpoint. No Username found in claims.");
+                _logger.LogWarning(
+                    "Unauthorized access attempt to /current-user endpoint. No Username found in claims.");
                 return Unauthorized();
             }
 
@@ -239,14 +288,14 @@ namespace Feast.Controllers
 
             return Ok(userModel);
         }
-        
+
         [HttpGet("protected-endpoint")]
         [Authorize]
         public IActionResult ProtectedEndpoint()
         {
             return Ok(new { message = "This is protected data." });
         }
-        
+
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
         {
@@ -258,13 +307,13 @@ namespace Feast.Controllers
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
-                // To prevent account enumeration attacks, consider returning Ok() even if the user is not found.
                 return Ok("If an account with the email exists, a password reset link has been sent.");
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
-            var resetLink = Url.Action(nameof(ConfirmResetPassword), "Users", new { token = encodedToken, email = model.Email }, Request.Scheme);
+            var resetLink = $"http://localhost:5173/confirm-reset-password/{encodedToken}/{user.Email}";
+            // Adjust the URL as needed -> after deployment
 
             // Send the reset link via email
             await _emailService.SendEmailAsync(model.Email, "Reset Password", $"Please reset your password by clicking here: {resetLink}");
@@ -290,16 +339,30 @@ namespace Feast.Controllers
             // Log the token for debugging
             _logger.LogInformation($"Confirming password reset for {model.Email} with token: {model.Token}");
 
-            var decodedToken = HttpUtility.UrlDecode(model.Token);
-            var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
-            if (result.Succeeded)
-            {
-                return Ok("Password has been reset successfully.");
-            }
+            var decodedToken = HttpUtility.UrlDecode(model.Token).Replace(' ', '+');
+            _logger.LogInformation($"Decoded token: {decodedToken}");
 
-            // Log the errors for debugging
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            return BadRequest($"Error occurred while resetting the password: {errors}");
+            try
+            {
+                var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
+                if (result.Succeeded)
+                {
+                    return Ok("Password has been reset successfully.");
+                }
+
+                // Log the errors for debugging
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                _logger.LogWarning($"Error occurred while resetting the password: {errors}");
+                return BadRequest($"Error occurred while resetting the password: {errors}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while resetting the password.");
+                return BadRequest("An error occurred while resetting the password.");
+            }
         }
+
+
+
     }
 }

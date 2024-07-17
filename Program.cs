@@ -1,16 +1,19 @@
 using System.Text;
 using Feast.Data;
+using Feast.Interfaces;
 using Feast.Models;
 using Feast.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<Program>());
 
 // Add database context
 builder.Services.AddDbContext<FeastDbContext>(options =>
@@ -26,6 +29,12 @@ builder.Services.AddTransient<EmailService>();
 
 // Add token service
 builder.Services.AddScoped<TokenService>();
+
+// Register HttpClient for dependency injection
+builder.Services.AddHttpClient(); 
+
+// Register your ingredient search service
+builder.Services.AddScoped<IIngredientSearchService, SpoonacularIngredientSearchService>();
 
 // Add configuration for reading from appsettings and user secrets
 builder.Configuration.AddEnvironmentVariables();

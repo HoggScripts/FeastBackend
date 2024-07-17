@@ -3,10 +3,8 @@ using Feast.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Web;
@@ -41,53 +39,47 @@ namespace Feast.Controllers
             _tokenService = tokenService;
         }
 
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
+            var existingUser = await _userManager.FindByEmailAsync(model.Email);
+            if (existingUser != null)
+            {
+                return BadRequest(new { message = "User already exists." });
+            }
 
-[HttpPost("register")]
-public async Task<IActionResult> Register([FromBody] RegisterModel model)
-{
-    if (!ModelState.IsValid)
-    {
-        return BadRequest(new { message = "Invalid model state." });
-    }
+            var user = new ApplicationUser
+            {
+                UserName = model.Username,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                RefreshToken = _tokenService.GenerateRefreshToken(),
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
+            };
 
-    var existingUser = await _userManager.FindByEmailAsync(model.Email);
-    if (existingUser != null)
-    {
-        return BadRequest(new { message = "User already exists." });
-    }
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+            }
 
-    var user = new ApplicationUser
-    {
-        UserName = model.Username,
-        Email = model.Email,
-        FirstName = model.FirstName,
-        LastName = model.LastName,
-        RefreshToken = _tokenService.GenerateRefreshToken(),
-        RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
-    };
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = HttpUtility.UrlEncode(token);
+            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
+                new { token = encodedToken, email = user.Email }, Request.Scheme);
 
-    var result = await _userManager.CreateAsync(user, model.Password);
-    if (!result.Succeeded)
-    {
-        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-        return BadRequest(new { message = errors });
-    }
+            _logger.LogInformation($"Email confirmation token for {model.Email}: {encodedToken}");
 
-    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-    var encodedToken = HttpUtility.UrlEncode(token);
-    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
-        new { token = encodedToken, email = user.Email }, Request.Scheme);
+            await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
 
-    // Log the token for debugging
-    _logger.LogInformation($"Email confirmation token for {model.Email}: {encodedToken}");
-
-    await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
-
-    return Ok("Registration successful. Please check your email to confirm your account.");
-}
-
-
+            return Ok("Registration successful. Please check your email to confirm your account.");
+        }
 
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
@@ -107,7 +99,6 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
                 return BadRequest("Invalid request.");
             }
 
-            // Log the token for debugging
             _logger.LogInformation($"User found with email: {email}. Confirming email with token: {token}");
 
             var decodedToken = HttpUtility.UrlDecode(token);
@@ -131,17 +122,9 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
                 return BadRequest(ModelState);
             }
 
-            ApplicationUser user;
-
-            // Check if identifier is an email or username
-            if (model.Identifier.Contains("@"))
-            {
-                user = await _userManager.FindByEmailAsync(model.Identifier);
-            }
-            else
-            {
-                user = await _userManager.FindByNameAsync(model.Identifier);
-            }
+            ApplicationUser user = model.Identifier.Contains("@")
+                ? await _userManager.FindByEmailAsync(model.Identifier)
+                : await _userManager.FindByNameAsync(model.Identifier);
 
             if (user != null && !await _userManager.IsEmailConfirmedAsync(user))
             {
@@ -149,34 +132,32 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
             }
 
             var result = await _signInManager.PasswordSignInAsync(user?.UserName ?? model.Identifier, model.Password, false, false);
-            if (result.Succeeded)
+            if (!result.Succeeded)
             {
-                var accessToken = _tokenService.GenerateJwtToken(user);
-
-                if (model.RememberMe)
-                {
-                    var refreshToken = _tokenService.GenerateRefreshToken();
-                    user.RefreshToken = refreshToken;
-                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30); // Longer expiry for "Remember Me"
-                    await _userManager.UpdateAsync(user);
-
-                    var cookieOptions = new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = false, // should be true in production
-                        SameSite = SameSiteMode.Strict,
-                        Expires = DateTime.UtcNow.AddDays(30) // Longer expiry for "Remember Me"
-                    };
-                    Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
-                }
-
-                return Ok(new { accessToken });
+                return Unauthorized("Invalid login attempt.");
             }
 
-            return Unauthorized("Invalid login attempt.");
+            var accessToken = _tokenService.GenerateJwtToken(user);
+
+            if (model.RememberMe)
+            {
+                var refreshToken = _tokenService.GenerateRefreshToken();
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30); // Longer expiry for "Remember Me"
+                await _userManager.UpdateAsync(user);
+
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // should be true in production
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddDays(30) // Longer expiry for "Remember Me"
+                };
+                Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+            }
+
+            return Ok(new { accessToken });
         }
-
-
 
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
@@ -193,12 +174,10 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
                 return BadRequest("User not found.");
             }
 
-            // Invalidate the refresh token by setting it to an empty string or a placeholder value
             user.RefreshToken = "Revoked"; // or any other placeholder value
             user.RefreshTokenExpiryTime = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
-            // Clear the HttpOnly cookie for refresh token
             Response.Cookies.Append("refreshToken", "", new CookieOptions
             {
                 HttpOnly = true,
@@ -210,18 +189,13 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
             return Ok();
         }
 
-
-
-
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
         {
-            // Log the incoming request
             _logger.LogInformation("Received request to refresh token");
 
             var refreshToken = Request.Cookies["refreshToken"];
 
-            // Log the received refresh token
             _logger.LogInformation($"Received refresh token: {refreshToken}");
 
             if (string.IsNullOrEmpty(refreshToken))
@@ -232,16 +206,13 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
 
             var user = await _userManager.Users.SingleOrDefaultAsync(u => u.RefreshToken == refreshToken);
 
-            // Log the user lookup result
             if (user == null)
             {
                 _logger.LogWarning("Invalid refresh token.");
                 return Unauthorized("Invalid refresh token.");
             }
 
-            // Log the token expiry time
-            _logger.LogInformation(
-                $"Refresh token expiry time: {user.RefreshTokenExpiryTime}, Current time: {DateTime.UtcNow}");
+            _logger.LogInformation($"Refresh token expiry time: {user.RefreshTokenExpiryTime}, Current time: {DateTime.UtcNow}");
 
             if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
@@ -251,12 +222,10 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
 
             var accessToken = _tokenService.GenerateJwtToken(user);
 
-            // Log the new access token
             _logger.LogInformation($"Generated new access token: {accessToken}");
 
             return Ok(new { accessToken });
         }
-
 
         [HttpGet("current-user")]
         public async Task<IActionResult> GetCurrentUser()
@@ -266,8 +235,7 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
 
             if (string.IsNullOrEmpty(username))
             {
-                _logger.LogWarning(
-                    "Unauthorized access attempt to /current-user endpoint. No Username found in claims.");
+                _logger.LogWarning("Unauthorized access attempt to /current-user endpoint. No Username found in claims.");
                 return Unauthorized();
             }
 
@@ -317,12 +285,10 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
             var resetLink = $"http://localhost:5173/confirm-reset-password/{encodedToken}/{user.Email}";
             // Adjust the URL as needed -> after deployment
 
-            // Send the reset link via email
             await _emailService.SendEmailAsync(model.Email, "Reset Password", $"Please reset your password by clicking here: {resetLink}");
 
             return Ok("If an account with the email exists, a password reset link has been sent.");
         }
-
 
         [HttpPost("confirm-reset-password")]
         public async Task<IActionResult> ConfirmResetPassword([FromBody] ConfirmResetPasswordModel model)
@@ -338,7 +304,6 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
                 return BadRequest("User not found.");
             }
 
-            // Log the token for debugging
             _logger.LogInformation($"Confirming password reset for {model.Email} with token: {model.Token}");
 
             var decodedToken = HttpUtility.UrlDecode(model.Token).Replace(' ', '+');
@@ -347,15 +312,14 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
             try
             {
                 var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
-                if (result.Succeeded)
+                if (!result.Succeeded)
                 {
-                    return Ok("Password has been reset successfully.");
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    _logger.LogWarning($"Error occurred while resetting the password: {errors}");
+                    return BadRequest($"Error occurred while resetting the password: {errors}");
                 }
 
-                // Log the errors for debugging
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                _logger.LogWarning($"Error occurred while resetting the password: {errors}");
-                return BadRequest($"Error occurred while resetting the password: {errors}");
+                return Ok("Password has been reset successfully.");
             }
             catch (Exception ex)
             {
@@ -363,8 +327,5 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
                 return BadRequest("An error occurred while resetting the password.");
             }
         }
-
-
-
     }
 }

@@ -174,7 +174,7 @@ namespace Feast.Controllers
                 return BadRequest("User not found.");
             }
 
-            user.RefreshToken = "Revoked"; // or any other placeholder value
+            user.RefreshToken = "Revoked"; 
             user.RefreshTokenExpiryTime = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
 
@@ -183,7 +183,7 @@ namespace Feast.Controllers
                 HttpOnly = true,
                 Secure = false, // should be true in production
                 SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(-1) // Set the expiration date in the past to clear the cookie
+                Expires = DateTime.UtcNow.AddDays(-1) 
             });
 
             return Ok();

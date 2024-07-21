@@ -1,11 +1,12 @@
 using Feast.Interfaces;
 using Feast.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Feast.ApiResponses;
 
 namespace Feast.Services
 {
@@ -24,110 +25,45 @@ namespace Feast.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<Ingredient>> SearchIngredientsAsync(string query)
+        public async Task<IEnumerable<Ingredient>> BasicIngredientsSearchAsync(string query)
         {
-            try
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/food/ingredients/search?query={query}");
+            request.Headers.Add("x-rapidapi-key", _apiKey);
+            request.Headers.Add("x-rapidapi-host", "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com");
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonConvert.DeserializeObject<SpoonacularApiResponses.SpoonacularIngredientSearchResponseRoot>(responseContent);
+
+            var ingredients = new List<Ingredient>();
+
+            foreach (var result in apiResponse.Results)
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}/search?query={query}&apiKey={_apiKey}");
-                response.EnsureSuccessStatusCode();
-
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var apiResponse = JsonConvert.DeserializeObject<SpoonacularIngredientSearchResponseRoot>(responseContent);
-
-                var ingredients = new List<Ingredient>();
-
-                foreach (var result in apiResponse.Results)
+                var ingredient = new Ingredient
                 {
-                    var ingredient = new Ingredient
-                    {
-                        Name = result.Name,
-                        Image = $"https://spoonacular.com/cdn/ingredients_100x100/{result.Image}",
-                        Description = "", // No description provided in the initial search response
-                        Calories = 0,
-                        Fat = 0,
-                        Protein = 0,
-                        Carbohydrates = 0,
-                        DietCategory = DietCategory.Any // Default value, needs to be determined based on additional logic
-                    };
+                    Id = result.Id,
+                    Name = result.Name,
+                    Image = $"https://spoonacular.com/cdn/ingredients_100x100/{result.Image}"
+                };
 
-                    // Fetch detailed information for each ingredient
-                    var detailResponse = await _httpClient.GetAsync($"{_baseUrl}/{result.Id}/information?apiKey={_apiKey}");
-                    detailResponse.EnsureSuccessStatusCode();
-                    var detailContent = await detailResponse.Content.ReadAsStringAsync();
-                    var detailApiResponse = JsonConvert.DeserializeObject<SpoonacularIngredientDetailResponse>(detailContent);
+                ingredients.Add(ingredient);
+            }
 
-                    ingredient.Description = detailApiResponse.Original;
-                    // Add logic to map nutritional information if available in the detail response
+            return ingredients;
+        }
 
-                    ingredients.Add(ingredient);
-                }
+        public async Task FetchPossibleUnitsAsync(Ingredient ingredient)
+        {
+            await ingredient.FetchPossibleUnits(_httpClient, _apiKey, _baseUrl);
+        }
 
-                return ingredients;
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "HTTP Request error occurred while searching for ingredients.");
-                throw;
-            }
-            catch (JsonSerializationException ex)
-            {
-                _logger.LogError(ex, "JSON Serialization error occurred while processing the API response.");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An unexpected error occurred while searching for ingredients.");
-                throw;
-            }
+        public async Task<Ingredient> GetIngredientDetailsAsync(int id, double amount, string unit)
+        {
+            var ingredient = new Ingredient { Id = id };
+            await ingredient.FetchDetails(_httpClient, _apiKey, _baseUrl, amount, unit);
+            return ingredient;
         }
     }
-
-    public class SpoonacularIngredientSearchResponseRoot
-    {
-        [JsonProperty("results")]
-        public List<SpoonacularIngredientSearchResult> Results { get; set; }
-    }
-
-    public class SpoonacularIngredientSearchResult
-    {
-        [JsonProperty("id")]
-        public int Id { get; set; }
-
-        [JsonProperty("name")]
-        public string Name { get; set; }
-
-        [JsonProperty("image")]
-        public string Image { get; set; }
-    }
-
-    public class SpoonacularIngredientDetailResponse
-    {
-        [JsonProperty("id")]
-        public int Id { get; set; }
-
-        [JsonProperty("original")]
-        public string Original { get; set; }
-
-        [JsonProperty("nutrition")]
-        public NutritionInfo Nutrition { get; set; }
-    }
-
-    public class NutritionInfo
-    {
-        [JsonProperty("nutrients")]
-        public List<Nutrient> Nutrients { get; set; }
-    }
-
-    public class Nutrient
-    {
-        [JsonProperty("name")]
-        public string Name { get; set; }
-
-        [JsonProperty("amount")]
-        public double Amount { get; set; }
-
-        [JsonProperty("unit")]
-        public string Unit { get; set; }
-    }
 }
-

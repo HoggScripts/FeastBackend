@@ -1,8 +1,13 @@
 using Feast.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace Feast.Interfaces;
-
-public interface IIngredientSearchService
+namespace Feast.Interfaces
 {
-    Task<IEnumerable<Ingredient>> SearchIngredientsAsync(string query);
+    public interface IIngredientSearchService
+    {
+        Task<IEnumerable<Ingredient>> BasicIngredientsSearchAsync(string query);
+        Task FetchPossibleUnitsAsync(Ingredient ingredient);
+        Task<Ingredient> GetIngredientDetailsAsync(int id, double amount, string unit);
+    }
 }

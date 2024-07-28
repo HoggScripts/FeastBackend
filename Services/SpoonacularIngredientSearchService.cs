@@ -24,6 +24,33 @@ namespace Feast.Services
             _baseUrl = configuration["FoodAPIs:Spoonacular:BaseUrl"];
             _logger = logger;
         }
+        public async Task<IEnumerable<Ingredient>> AutocompleteIngredientsAsync(string query)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/food/ingredients/autocomplete?query={query}&number=5&apiKey={_apiKey}");
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonConvert.DeserializeObject<List<SpoonacularAutocompleteResponse>>(responseContent);
+
+            var ingredients = new List<Ingredient>();
+
+            foreach (var result in apiResponse)
+            {
+                var ingredient = new Ingredient
+                {
+                    Id = result.Id,
+                    Name = result.Name,
+                    Image = $"https://spoonacular.com/cdn/ingredients_100x100/{result.Image}",
+                    PossibleUnits = result.PossibleUnits
+                };
+
+                ingredients.Add(ingredient);
+            }
+
+            return ingredients;
+        }
+
 
         public async Task<IEnumerable<Ingredient>> BasicIngredientsSearchAsync(string query)
         {
@@ -62,7 +89,7 @@ namespace Feast.Services
         public async Task<Ingredient> GetIngredientDetailsAsync(int id, double amount, string unit)
         {
             var ingredient = new Ingredient { Id = id };
-            await ingredient.FetchDetails(_httpClient, _apiKey, _baseUrl, amount, unit);
+            await ingredient.FetchDetailsAndCost(_httpClient, _apiKey, _baseUrl, amount, unit);
             return ingredient;
         }
     }

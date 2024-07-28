@@ -38,48 +38,54 @@ namespace Feast.Controllers
             _configuration = configuration;
             _tokenService = tokenService;
         }
+[HttpPost("register")]
+public async Task<IActionResult> Register([FromBody] RegisterModel model)
+{
+    _logger.LogInformation("Register attempt for email: {Email}", model.Email);
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+    if (!ModelState.IsValid)
+    {
+        _logger.LogWarning("Invalid model state for email: {Email}", model.Email);
+        return BadRequest(ModelState);
+    }
 
-            var existingUser = await _userManager.FindByEmailAsync(model.Email);
-            if (existingUser != null)
-            {
-                return BadRequest(new { message = "User already exists." });
-            }
+    var existingUser = await _userManager.FindByEmailAsync(model.Email);
+    if (existingUser != null)
+    {
+        _logger.LogWarning("User already exists with email: {Email}", model.Email);
+        return BadRequest(new { message = "User already exists." });
+    }
 
-            var user = new ApplicationUser
-            {
-                UserName = model.Username,
-                Email = model.Email,
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                RefreshToken = _tokenService.GenerateRefreshToken(),
-                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
-            };
+    var user = new ApplicationUser
+    {
+        UserName = model.Username,
+        Email = model.Email,
+        FirstName = model.FirstName,
+        LastName = model.LastName,
+        RefreshToken = _tokenService.GenerateRefreshToken(),
+        RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
+    };
 
-            var result = await _userManager.CreateAsync(user, model.Password);
-            if (!result.Succeeded)
-            {
-                return BadRequest(new { message = string.Join(", ", result.Errors.Select(e => e.Description)) });
-            }
+    var result = await _userManager.CreateAsync(user, model.Password);
+    if (!result.Succeeded)
+    {
+        _logger.LogError("Failed to create user: {Email}. Errors: {Errors}", model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+        return BadRequest(new { message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+    }
 
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var encodedToken = HttpUtility.UrlEncode(token);
-            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
-                new { token = encodedToken, email = user.Email }, Request.Scheme);
+    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+    var encodedToken = HttpUtility.UrlEncode(token);
+    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
+        new { token = encodedToken, email = user.Email }, Request.Scheme);
 
-            _logger.LogInformation($"Email confirmation token for {model.Email}: {encodedToken}");
+    _logger.LogInformation("Email confirmation token generated for {Email}: {Token}", model.Email, encodedToken);
 
-            await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
+    await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
 
-            return Ok("Registration successful. Please check your email to confirm your account.");
-        }
+    _logger.LogInformation("Registration successful for email: {Email}. Confirmation email sent.", model.Email);
+    return Ok("Registration successful. Please check your email to confirm your account.");
+}
+
 
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(string token, string email)

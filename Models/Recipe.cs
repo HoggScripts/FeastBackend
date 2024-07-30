@@ -17,6 +17,9 @@ namespace Feast.Models
         public string CardBackgroundColor { get; set; }  // New property for card background color
         public string CardTextColor { get; set; }  // New property for card text color
 
+        // Parameterless constructor for EF Core
+        public Recipe() { }
+
         public Recipe(string name, string image, Ingredient[] ingredients, string[] steps, int cookTime, string userId, string cardBackgroundColor, string cardTextColor)
         {
             Name = name;

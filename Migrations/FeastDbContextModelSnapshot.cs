@@ -102,58 +102,6 @@ namespace Feast.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Feast.Models.Ingredient", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("Amount")
-                        .HasColumnType("double precision");
-
-                    b.Property<int?>("Calories")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("Carbohydrates")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("EstimatedCost")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("Fat")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Image")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<List<string>>("PossibleUnits")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<int?>("Protein")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("RecipeId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecipeId");
-
-                    b.ToTable("Ingredient");
-                });
-
             modelBuilder.Entity("Feast.Models.Recipe", b =>
                 {
                     b.Property<int>("Id")
@@ -165,13 +113,8 @@ namespace Feast.Migrations
                     b.Property<int?>("Calories")
                         .HasColumnType("integer");
 
-                    b.Property<string>("CardBackgroundColor")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CardTextColor")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int?>("Carbohydrates")
+                        .HasColumnType("integer");
 
                     b.Property<int>("CookTime")
                         .HasColumnType("integer");
@@ -183,17 +126,19 @@ namespace Feast.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("Image")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int?>("Protein")
                         .HasColumnType("integer");
 
-                    b.Property<string[]>("Steps")
+                    b.Property<string>("RecipeName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("integer");
+
+                    b.Property<List<string>>("Steps")
                         .IsRequired()
                         .HasColumnType("text[]");
 
@@ -340,13 +285,6 @@ namespace Feast.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Feast.Models.Ingredient", b =>
-                {
-                    b.HasOne("Feast.Models.Recipe", null)
-                        .WithMany("Ingredients")
-                        .HasForeignKey("RecipeId");
-                });
-
             modelBuilder.Entity("Feast.Models.Recipe", b =>
                 {
                     b.HasOne("Feast.Models.ApplicationUser", "User")
@@ -354,6 +292,61 @@ namespace Feast.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsMany("Feast.Models.Ingredient", "Ingredients", b1 =>
+                        {
+                            b1.Property<int>("RecipeId")
+                                .HasColumnType("integer");
+
+                            b1.Property<int>("Id1")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id1"));
+
+                            b1.Property<double>("Amount")
+                                .HasColumnType("double precision");
+
+                            b1.Property<int?>("Calories")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("Carbohydrates")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("EstimatedCost")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("Fat")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Image")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<List<string>>("PossibleUnits")
+                                .IsRequired()
+                                .HasColumnType("text[]");
+
+                            b1.Property<int?>("Protein")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Unit")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.HasKey("RecipeId", "Id1");
+
+                            b1.ToTable("Ingredient");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RecipeId");
+                        });
+
+                    b.Navigation("Ingredients");
 
                     b.Navigation("User");
                 });
@@ -412,11 +405,6 @@ namespace Feast.Migrations
             modelBuilder.Entity("Feast.Models.ApplicationUser", b =>
                 {
                     b.Navigation("Recipes");
-                });
-
-            modelBuilder.Entity("Feast.Models.Recipe", b =>
-                {
-                    b.Navigation("Ingredients");
                 });
 #pragma warning restore 612, 618
         }

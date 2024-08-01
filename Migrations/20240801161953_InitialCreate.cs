@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -7,14 +8,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Feast.Migrations
 {
     /// <inheritdoc />
-    public partial class AddApplicationUser : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "Users");
-
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -36,6 +34,8 @@ namespace Feast.Migrations
                     Id = table.Column<string>(type: "text", nullable: false),
                     FirstName = table.Column<string>(type: "text", nullable: false),
                     LastName = table.Column<string>(type: "text", nullable: false),
+                    RefreshToken = table.Column<string>(type: "text", nullable: false),
+                    RefreshTokenExpiryTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -162,6 +162,64 @@ namespace Feast.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Recipes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RecipeName = table.Column<string>(type: "text", nullable: false),
+                    Image = table.Column<string>(type: "text", nullable: true),
+                    Steps = table.Column<List<string>>(type: "text[]", nullable: false),
+                    CookTime = table.Column<int>(type: "integer", nullable: false),
+                    Servings = table.Column<int>(type: "integer", nullable: false),
+                    Calories = table.Column<int>(type: "integer", nullable: true),
+                    Fat = table.Column<int>(type: "integer", nullable: true),
+                    Protein = table.Column<int>(type: "integer", nullable: true),
+                    Carbohydrates = table.Column<int>(type: "integer", nullable: true),
+                    EstimatedCost = table.Column<int>(type: "integer", nullable: true),
+                    UserId = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Recipes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Recipes_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Ingredient",
+                columns: table => new
+                {
+                    RecipeId = table.Column<int>(type: "integer", nullable: false),
+                    Id1 = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Image = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<double>(type: "double precision", nullable: false),
+                    Unit = table.Column<string>(type: "text", nullable: false),
+                    Calories = table.Column<int>(type: "integer", nullable: true),
+                    Fat = table.Column<int>(type: "integer", nullable: true),
+                    Protein = table.Column<int>(type: "integer", nullable: true),
+                    Carbohydrates = table.Column<int>(type: "integer", nullable: true),
+                    EstimatedCost = table.Column<int>(type: "integer", nullable: true),
+                    PossibleUnits = table.Column<List<string>>(type: "text[]", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Ingredient", x => new { x.RecipeId, x.Id1 });
+                    table.ForeignKey(
+                        name: "FK_Ingredient_Recipes_RecipeId",
+                        column: x => x.RecipeId,
+                        principalTable: "Recipes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -198,6 +256,11 @@ namespace Feast.Migrations
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Recipes_UserId",
+                table: "Recipes",
+                column: "UserId");
         }
 
         /// <inheritdoc />
@@ -219,26 +282,16 @@ namespace Feast.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "Ingredient");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "Recipes");
 
-            migrationBuilder.CreateTable(
-                name: "Users",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Email = table.Column<string>(type: "text", nullable: false),
-                    Password = table.Column<string>(type: "text", nullable: false),
-                    Username = table.Column<string>(type: "text", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Users", x => x.Id);
-                });
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
         }
     }
 }

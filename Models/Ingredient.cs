@@ -23,8 +23,7 @@ namespace Feast.Models
         public int? Carbohydrates { get; set; }
         public int? EstimatedCost { get; set; }
         public List<string> PossibleUnits { get; set; }
-
-        // Method to Fetch Possible Units
+        
         public async Task FetchPossibleUnits(HttpClient httpClient, string apiKey, string baseUrl)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/food/ingredients/{Id}/information?amount=1");
@@ -39,8 +38,7 @@ namespace Feast.Models
 
             PossibleUnits = detailApiResponse.PossibleUnits;
         }
-
-        // Method to Fetch Details and Nutrition
+        
         public async Task FetchDetails(HttpClient httpClient, string apiKey, string baseUrl, double amount, string unit)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/food/ingredients/{Id}/information?amount={amount}&unit={unit}");
@@ -77,10 +75,9 @@ namespace Feast.Models
 
         public async Task FetchDetailsAndCost(HttpClient httpClient, string apiKey, string baseUrl, double amount, string unit)
         {
-            // Fetch Details
+        
             await FetchDetails(httpClient, apiKey, baseUrl, amount, unit);
             
-            // Fetch Estimated Cost using the updated details
             var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/food/ingredients/{Id}/information?amount={amount}&unit={unit}");
             request.Headers.Add("x-rapidapi-key", apiKey);
             request.Headers.Add("x-rapidapi-host", "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com");

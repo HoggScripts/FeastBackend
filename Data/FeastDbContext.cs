@@ -17,10 +17,18 @@ namespace Feast.Data
             base.OnModelCreating(builder);
 
             builder.Entity<Recipe>()
+                .OwnsMany(r => r.Ingredients, a =>
+                {
+                    a.WithOwner().HasForeignKey("RecipeId");
+                    a.Ignore(i => i.Id); // Ignore the Id property in the database
+                });
+
+            builder.Entity<Recipe>()
                 .HasOne(r => r.User)
-                .WithMany(u => u.Recipes)  // Ensure the user has a collection of recipes
+                .WithMany(u => u.Recipes)
                 .HasForeignKey(r => r.UserId)
-                .OnDelete(DeleteBehavior.Cascade);  // Specify delete behavior
+                .OnDelete(DeleteBehavior.Cascade);
         }
+
     }
 }

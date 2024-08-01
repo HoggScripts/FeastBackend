@@ -26,7 +26,8 @@ namespace Feast.Services
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.UserName)
+                new Claim(ClaimTypes.NameIdentifier, user.UserName), // Keep the username as the NameIdentifier
+                new Claim("UserId", user.Id) // Add a custom claim for the user ID (GUID)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret));
@@ -42,6 +43,7 @@ namespace Feast.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
 
         public string GenerateRefreshToken()
         {

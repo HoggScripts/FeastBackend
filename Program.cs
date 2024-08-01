@@ -11,32 +11,32 @@ using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+
 builder.Services.AddControllers()
     .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<Program>());
 
-// Add database context
+
 builder.Services.AddDbContext<FeastDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add Identity services
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<FeastDbContext>()
     .AddDefaultTokenProviders();
 
-// Add EmailService
+
 builder.Services.AddTransient<EmailService>();
 
-// Add token service
+
 builder.Services.AddScoped<TokenService>();
 
-// Register HttpClient for dependency injection
+
 builder.Services.AddHttpClient(); 
 
-// Register your ingredient search service
+
 builder.Services.AddScoped<IIngredientSearchService, SpoonacularIngredientSearchService>();
 
-// Add configuration for reading from appsettings and user secrets
+
 builder.Configuration.AddEnvironmentVariables();
 if (builder.Environment.IsDevelopment())
 {
@@ -55,7 +55,7 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
 });
 
-// Configure JWT Authentication
+
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 builder.Services.AddAuthentication(options =>
     {
@@ -81,7 +81,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin",
         builder => builder
-            .WithOrigins("http://localhost:5173") // Specify your frontend origin here
+            .WithOrigins("http://localhost:5173") // Frontend Origin -> Change on Deployment
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
@@ -89,7 +89,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();

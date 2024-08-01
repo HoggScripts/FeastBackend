@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging; 
 using System.Security.Claims;
 using Feast.Data;
 using Feast.Models;
@@ -12,17 +13,23 @@ namespace Feast.Controllers
     public class RecipesController : ControllerBase
     {
         private readonly FeastDbContext _context;
+        private readonly ILogger<RecipesController> _logger;
 
-        public RecipesController(FeastDbContext context)
+        public RecipesController(FeastDbContext context, ILogger<RecipesController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpPost]
         public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get user ID from the claims
-            var recipe = new Recipe(dto.Name, dto.Image, dto.Ingredients, dto.Steps, dto.CookTime, userId, dto.CardBackgroundColor, dto.CardTextColor);
+            var userId = User.FindFirstValue("userId"); 
+
+            
+            _logger.LogInformation("User ID is: {UserId}", userId);
+
+            var recipe = new Recipe(dto.RecipeName, dto.Image, dto.Ingredients, dto.Steps, dto.CookTime, dto.Servings, userId);
 
             _context.Recipes.Add(recipe);
             _context.SaveChanges();
@@ -64,13 +71,13 @@ namespace Feast.Controllers
                 return NotFound();
             }
 
-            recipe.Name = dto.Name;
+            recipe.RecipeName = dto.RecipeName;
             recipe.Image = dto.Image;
             recipe.Ingredients = dto.Ingredients;
             recipe.Steps = dto.Steps;
+            recipe.Servings = dto.Servings;
             recipe.CookTime = dto.CookTime;
-            recipe.CardBackgroundColor = dto.CardBackgroundColor;
-            recipe.CardTextColor = dto.CardTextColor;
+
             recipe.UpdateIngredients(dto.Ingredients);
 
             _context.Recipes.Update(recipe);
@@ -82,6 +89,8 @@ namespace Feast.Controllers
         [HttpDelete("{id}")]
         public IActionResult DeleteRecipe(int id)
         {
+            _logger.LogInformation("Attempting to delete recipe with ID: {RecipeId}", id);
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var recipe = _context.Recipes.FirstOrDefault(r => r.Id == id && r.UserId == userId);
 
@@ -97,4 +106,3 @@ namespace Feast.Controllers
         }
     }
 }
-

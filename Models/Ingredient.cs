@@ -10,7 +10,7 @@ namespace Feast.Models
         // Basic Information
         public int Id { get; set; }
         public string Name { get; set; }
-        public string Image { get; set; }
+        public string? Image { get; set; }
         
         // User Selected Properties
         public double Amount { get; set; }
@@ -22,7 +22,7 @@ namespace Feast.Models
         public int? Protein { get; set; }
         public int? Carbohydrates { get; set; }
         public int? EstimatedCost { get; set; }
-        public List<string> PossibleUnits { get; set; }
+        public List<string>? PossibleUnits { get; set; }
         
         public async Task FetchPossibleUnits(HttpClient httpClient, string apiKey, string baseUrl)
         {

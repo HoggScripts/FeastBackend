@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Feast.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Feast.Migrations
 {
     [DbContext(typeof(FeastDbContext))]
-    partial class FeastDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240801232339_InitialCreate5")]
+    partial class InitialCreate5
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -320,6 +323,7 @@ namespace Feast.Migrations
                                 .HasColumnType("integer");
 
                             b1.Property<string>("Image")
+                                .IsRequired()
                                 .HasColumnType("text");
 
                             b1.Property<string>("Name")
@@ -327,6 +331,7 @@ namespace Feast.Migrations
                                 .HasColumnType("text");
 
                             b1.Property<List<string>>("PossibleUnits")
+                                .IsRequired()
                                 .HasColumnType("text[]");
 
                             b1.Property<int?>("Protein")

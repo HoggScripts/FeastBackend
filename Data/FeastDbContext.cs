@@ -20,7 +20,8 @@ namespace Feast.Data
                 .OwnsMany(r => r.Ingredients, a =>
                 {
                     a.WithOwner().HasForeignKey("RecipeId");
-                    a.Ignore(i => i.Id); // Ignore the Id property in the database
+                    a.Property<int>("Id"); // Keep the Id as a primary key
+                    a.HasKey("RecipeId", "Id"); // Composite key
                 });
 
             builder.Entity<Recipe>()
@@ -29,6 +30,5 @@ namespace Feast.Data
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
-
     }
 }

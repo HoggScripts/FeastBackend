@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Feast.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Feast.Migrations
 {
     [DbContext(typeof(FeastDbContext))]
-    partial class FeastDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240801231053_InitialCreate4")]
+    partial class InitialCreate4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -298,11 +301,11 @@ namespace Feast.Migrations
                             b1.Property<int>("RecipeId")
                                 .HasColumnType("integer");
 
-                            b1.Property<int>("Id")
+                            b1.Property<int>("Id1")
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("integer");
 
-                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id"));
+                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id1"));
 
                             b1.Property<double>("Amount")
                                 .HasColumnType("double precision");
@@ -320,6 +323,7 @@ namespace Feast.Migrations
                                 .HasColumnType("integer");
 
                             b1.Property<string>("Image")
+                                .IsRequired()
                                 .HasColumnType("text");
 
                             b1.Property<string>("Name")
@@ -327,6 +331,7 @@ namespace Feast.Migrations
                                 .HasColumnType("text");
 
                             b1.Property<List<string>>("PossibleUnits")
+                                .IsRequired()
                                 .HasColumnType("text[]");
 
                             b1.Property<int?>("Protein")
@@ -336,7 +341,7 @@ namespace Feast.Migrations
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.HasKey("RecipeId", "Id");
+                            b1.HasKey("RecipeId", "Id1");
 
                             b1.ToTable("Ingredient");
 

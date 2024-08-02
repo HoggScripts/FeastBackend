@@ -266,9 +266,15 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
         }
 
         [HttpGet("protected-endpoint")]
-        [Authorize]
         public IActionResult ProtectedEndpoint()
         {
+            var userId = User.FindFirstValue("UserId");
+            _logger.LogInformation("UserId claim retrieved in protected endpoint: {UserId}", userId);
+
+            var allClaims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+            _logger.LogInformation("All Claims: {@AllClaims}", allClaims);
+
+            return Ok(new { message = "This is protected data.", claims = allClaims });
             return Ok(new { message = "This is protected data." });
         }
 

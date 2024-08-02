@@ -1,5 +1,6 @@
 using Feast.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging; // Don't forget this import
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
@@ -12,10 +13,12 @@ namespace Feast.Services
     public class TokenService
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<TokenService> _logger;
 
-        public TokenService(IConfiguration configuration)
+        public TokenService(IConfiguration configuration, ILogger<TokenService> logger) // Inject the logger here
         {
             _configuration = configuration;
+            _logger = logger; // Assign the injected logger
         }
 
         public string GenerateJwtToken(ApplicationUser user)
@@ -37,13 +40,20 @@ namespace Feast.Services
                 issuer: jwtSettings.Issuer,
                 audience: jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // Adjust token lifetime as needed
+                expires: DateTime.UtcNow.AddMinutes(30), // Adjust token lifetime as needed
                 signingCredentials: creds
             );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+            // Logging the key, issuer, audience, and the generated token
+            _logger.LogInformation("JWT Signing Key: {SigningKey}", jwtSettings.Secret);
+            _logger.LogInformation("JWT Issuer: {Issuer}", jwtSettings.Issuer);
+            _logger.LogInformation("JWT Audience: {Audience}", jwtSettings.Audience);
 
+            var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
+            _logger.LogInformation("Generated JWT Token: {Token}", generatedToken);
+
+            return generatedToken;
+        }
 
         public string GenerateRefreshToken()
         {

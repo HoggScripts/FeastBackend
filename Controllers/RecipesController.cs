@@ -67,6 +67,7 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
                 EstimatedCost = i.EstimatedCost,
                 // Image and PossibleUnits are not mapped
             };
+           
 
             // Log the mapped ingredient
             _logger.LogInformation("Mapped Ingredient: {@Ingredient}", ingredient);
@@ -78,6 +79,11 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
 
         // Create the Recipe object and log it
         var recipe = new Recipe(dto.RecipeName, dto.Image, ingredients, dto.Steps, dto.CookTime, dto.Servings, userId);
+        int recipeStepsCount = recipe.Steps.Count;
+        if (recipe.Steps[recipeStepsCount - 1].Trim() == "")
+        {
+            recipe.Steps.RemoveAt(recipeStepsCount - 1);
+        }
         _logger.LogInformation("Created Recipe object: {@Recipe}", recipe);
 
         // Add the recipe to the context and save changes

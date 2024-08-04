@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Feast.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Feast.Migrations
 {
     [DbContext(typeof(FeastDbContext))]
-    partial class FeastDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240804150704_MadeMealTypeAString")]
+    partial class MadeMealTypeAString
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -272,9 +275,6 @@ namespace Feast.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("Servings")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SpicinessLevel")
                         .HasColumnType("integer");
 
                     b.Property<List<string>>("Steps")

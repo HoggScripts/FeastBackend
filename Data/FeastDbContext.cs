@@ -16,6 +16,7 @@ namespace Feast.Data
         {
             base.OnModelCreating(builder);
 
+            // Configure the Recipe entity
             builder.Entity<Recipe>()
                 .OwnsMany(r => r.Ingredients, a =>
                 {
@@ -29,6 +30,13 @@ namespace Feast.Data
                 .WithMany(u => u.Recipes)
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure MealType to be stored as a string
+            builder.Entity<Recipe>()
+                .Property(r => r.MealType)
+                .HasConversion(
+                    v => v,  // No conversion needed, store as string
+                    v => v);  // No conversion needed, retrieve as string
         }
     }
 }

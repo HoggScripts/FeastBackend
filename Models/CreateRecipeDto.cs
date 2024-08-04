@@ -8,5 +8,7 @@ namespace Feast.Models
         public List<string> Steps { get; set; } = new List<string>();  
         public int Servings { get; set; }
         public int CookTime { get; set; }
+        public string MealType { get; set; }
+        public int SpicinessLevel { get; set; }
     }
 }

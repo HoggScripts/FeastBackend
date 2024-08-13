@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using FluentValidation.AspNetCore;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -65,7 +64,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings.Issuer,
         ValidAudience = jwtSettings.Audience,
         IssuerSigningKey = signingKey,
-        // ClockSkew = TimeSpan.Zero // Uncomment for testing expiry behavior
+        //ClockSkew = TimeSpan.Zero // Uncomment for testing expiry behavior
     };
 
     // Log the key being used for validation
@@ -86,6 +85,17 @@ builder.Services.AddCors(options =>
             .AllowCredentials());
 });
 
+// Add session services
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // Set session timeout
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true; // Make the session cookie essential
+});
+
+builder.Services.Configure<OAuthSettings>(builder.Configuration.GetSection("OAuth"));
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -98,6 +108,9 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Enable session before MVC middleware
+app.UseSession();
 
 app.MapControllers();
 

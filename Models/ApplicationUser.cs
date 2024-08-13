@@ -12,5 +12,8 @@ namespace Feast.Models
 
         // Add a collection of recipes
         public ICollection<Recipe> Recipes { get; set; }
+        
+        // Navigation property for related Google OAuth tokens
+        public GoogleOAuthToken GoogleOAuthToken { get; set; }
     }
 }

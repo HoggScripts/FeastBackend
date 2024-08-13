@@ -144,5 +144,102 @@ namespace Feast.Controllers
 
             return NoContent();
         }
+        [HttpGet("search/spiciness")]
+        public IActionResult SearchBySpicinessLevel(int level)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var recipes = _context.Recipes
+                .Where(r => r.UserId == userId && r.SpicinessLevel >= level)
+                .ToList();
+
+            return Ok(recipes);
+        }
+
+        [HttpGet("search/mealtype")]
+        public IActionResult SearchByMealType(string mealType)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var recipes = _context.Recipes
+                .Where(r => r.UserId == userId && r.MealType.ToLower() == mealType.ToLower())
+                .ToList();
+
+            return Ok(recipes);
+        }
+
+        [HttpGet("search/calories")]
+        public IActionResult SearchByCaloriesRange(int min, int max)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var recipes = _context.Recipes
+                .Where(r => r.UserId == userId && r.Calories >= min && r.Calories <= max)
+                .ToList();
+
+            return Ok(recipes);
+        }
+
+        [HttpGet("search/cooktime")]
+        public IActionResult SearchByCookTime(int max)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var recipes = _context.Recipes
+                .Where(r => r.UserId == userId && r.CookTime <= max)
+                .ToList();
+
+            return Ok(recipes);
+        }
+
+        [HttpGet("search")]
+        public IActionResult SearchByMultipleCriteria(string? mealType, int? minSpiciness, int? maxCalories, int? maxCookTime)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var query = _context.Recipes.AsQueryable();
+
+            if (!string.IsNullOrEmpty(mealType))
+            {
+                query = query.Where(r => r.UserId == userId && r.MealType.ToLower() == mealType.ToLower());
+            }
+
+            if (minSpiciness.HasValue)
+            {
+                query = query.Where(r => r.SpicinessLevel >= minSpiciness.Value);
+            }
+
+            if (maxCalories.HasValue)
+            {
+                query = query.Where(r => r.Calories <= maxCalories.Value);
+            }
+
+            if (maxCookTime.HasValue)
+            {
+                query = query.Where(r => r.CookTime <= maxCookTime.Value);
+            }
+
+            var recipes = query.ToList();
+            return Ok(recipes);
+        }
+
+        [HttpGet("search/protein")]
+        public IActionResult SearchByProtein(int minProtein)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var recipes = _context.Recipes
+                .Where(r => r.UserId == userId && r.Protein >= minProtein)
+                .ToList();
+
+            return Ok(recipes);
+        }
+
+        [HttpGet("search/cost")]
+        public IActionResult SearchByCostRange(int minCost, int maxCost)
+        {
+            var userId = User.FindFirstValue("UserId");
+            var recipes = _context.Recipes
+                .Where(r => r.UserId == userId && r.EstimatedCost >= minCost && r.EstimatedCost <= maxCost)
+                .ToList();
+
+            return Ok(recipes);
+        }
     }
 }
+    
+

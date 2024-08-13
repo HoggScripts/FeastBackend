@@ -198,7 +198,7 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
         {
-            _logger.LogInformation("Received request to refresh token");
+    
 
             var refreshToken = Request.Cookies["refreshToken"];
 

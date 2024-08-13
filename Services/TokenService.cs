@@ -40,7 +40,7 @@ namespace Feast.Services
                 issuer: jwtSettings.Issuer,
                 audience: jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(30), // Adjust token lifetime as needed
+                expires: DateTime.UtcNow.AddMinutes(20), // Adjust token lifetime as needed
                 signingCredentials: creds
             );
 

@@ -11,6 +11,7 @@ namespace Feast.Data
         }
 
         public DbSet<Recipe> Recipes { get; set; }
+        public DbSet<GoogleOAuthToken> GoogleOAuthTokens { get; set; } // Add this DbSet
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -37,6 +38,13 @@ namespace Feast.Data
                 .HasConversion(
                     v => v,  // No conversion needed, store as string
                     v => v);  // No conversion needed, retrieve as string
+
+            // Configure the one-to-one relationship between ApplicationUser and GoogleOAuthToken
+            builder.Entity<ApplicationUser>()
+                .HasOne(u => u.GoogleOAuthToken)
+                .WithOne(t => t.User)
+                .HasForeignKey<GoogleOAuthToken>(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade); // Optional: Cascade delete the token when the user is deleted
         }
     }
 }

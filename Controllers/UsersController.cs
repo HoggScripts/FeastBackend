@@ -38,54 +38,55 @@ namespace Feast.Controllers
             _configuration = configuration;
             _tokenService = tokenService;
         }
-[HttpPost("register")]
-public async Task<IActionResult> Register([FromBody] RegisterModel model)
-{
-    _logger.LogInformation("Register attempt for email: {Email}", model.Email);
 
-    if (!ModelState.IsValid)
-    {
-        _logger.LogWarning("Invalid model state for email: {Email}", model.Email);
-        return BadRequest(ModelState);
-    }
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            _logger.LogInformation("Register attempt for email: {Email}", model.Email);
 
-    var existingUser = await _userManager.FindByEmailAsync(model.Email);
-    if (existingUser != null)
-    {
-        _logger.LogWarning("User already exists with email: {Email}", model.Email);
-        return BadRequest(new { message = "User already exists." });
-    }
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state for email: {Email}", model.Email);
+                return BadRequest(ModelState);
+            }
 
-    var user = new ApplicationUser
-    {
-        UserName = model.Username,
-        Email = model.Email,
-        FirstName = model.FirstName,
-        LastName = model.LastName,
-        RefreshToken = _tokenService.GenerateRefreshToken(),
-        RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
-    };
+            var existingUser = await _userManager.FindByEmailAsync(model.Email);
+            if (existingUser != null)
+            {
+                _logger.LogWarning("User already exists with email: {Email}", model.Email);
+                return BadRequest(new { message = "User already exists." });
+            }
 
-    var result = await _userManager.CreateAsync(user, model.Password);
-    if (!result.Succeeded)
-    {
-        _logger.LogError("Failed to create user: {Email}. Errors: {Errors}", model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
-        return BadRequest(new { message = string.Join(", ", result.Errors.Select(e => e.Description)) });
-    }
+            var user = new ApplicationUser
+            {
+                UserName = model.Username,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                RefreshToken = _tokenService.GenerateRefreshToken(),
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
+            };
 
-    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-    var encodedToken = HttpUtility.UrlEncode(token);
-    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
-        new { token = encodedToken, email = user.Email }, Request.Scheme);
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                _logger.LogError("Failed to create user: {Email}. Errors: {Errors}", model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+                return BadRequest(new { message = string.Join(", ", result.Errors.Select(e => e.Description)) });
+            }
 
-    _logger.LogInformation("Email confirmation token generated for {Email}: {Token}", model.Email, encodedToken);
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = HttpUtility.UrlEncode(token);
+            var confirmationLink = Url.Action(nameof(ConfirmEmail), "Users",
+                new { token = encodedToken, email = user.Email }, Request.Scheme);
 
-    await _emailService.SendEmailAsync(user.Email, "Confirm your email", confirmationLink);
+            _logger.LogInformation("Email confirmation token generated for {Email}: {Token}", model.Email, encodedToken);
 
-    _logger.LogInformation("Registration successful for email: {Email}. Confirmation email sent.", model.Email);
-    return Ok("Registration successful. Please check your email to confirm your account.");
-}
+            // Using SendRegistrationEmailAsync method instead of SendEmailAsync
+            await _emailService.SendRegistrationEmailAsync(user.Email, model.Username, confirmationLink);
 
+            _logger.LogInformation("Registration successful for email: {Email}. Confirmation email sent.", model.Email);
+            return Ok("Registration successful. Please check your email to confirm your account.");
+        }
 
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(string token, string email)
@@ -198,8 +199,6 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken()
         {
-    
-
             var refreshToken = Request.Cookies["refreshToken"];
 
             _logger.LogInformation($"Received refresh token: {refreshToken}");
@@ -275,7 +274,6 @@ public async Task<IActionResult> Register([FromBody] RegisterModel model)
             _logger.LogInformation("All Claims: {@AllClaims}", allClaims);
 
             return Ok(new { message = "This is protected data.", claims = allClaims });
-            return Ok(new { message = "This is protected data." });
         }
 
         [HttpPost("reset-password")]

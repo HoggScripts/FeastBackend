@@ -42,8 +42,7 @@ namespace Feast.Controllers
                 return null;
             }
         }
-        
-      
+
         [HttpGet("google-link-status")]
         public async Task<IActionResult> CheckGoogleLinkStatus()
         {
@@ -71,8 +70,6 @@ namespace Feast.Controllers
             _logger.LogInformation("User has linked their Google account.");
             return Ok(new { isLinked = true });
         }
-
-
 
         [HttpGet("authorize")]
         public IActionResult Authorize(string redirectUrl, string jwt)
@@ -110,7 +107,7 @@ namespace Feast.Controllers
                 $"&response_type=code" +
                 $"&scope=https://www.googleapis.com/auth/calendar" +
                 $"&access_type=offline" +
-                $"&prompt=consent";  // Force Google to prompt for consent
+                $"&prompt=consent"; // Force Google to prompt for consent
 
             _logger.LogInformation($"Redirecting to: {authorizationUrl}");
 
@@ -161,7 +158,8 @@ namespace Feast.Controllers
                 var refreshToken = tokenData["refresh_token"]?.ToString();
                 var expiresInSeconds = tokenData["expires_in"]?.ToString();
 
-                _logger.LogInformation($"Access Token: {accessToken}, Refresh Token: {refreshToken}, Expires In: {expiresInSeconds}");
+                _logger.LogInformation(
+                    $"Access Token: {accessToken}, Refresh Token: {refreshToken}, Expires In: {expiresInSeconds}");
 
                 if (accessToken == null || refreshToken == null)
                 {
@@ -172,7 +170,7 @@ namespace Feast.Controllers
                 var expiresIn = DateTime.UtcNow.AddSeconds(Convert.ToDouble(expiresInSeconds));
 
                 var user = await _context.Users.Include(u => u.GoogleOAuthToken)
-                                               .FirstOrDefaultAsync(u => u.Id == userId);
+                    .FirstOrDefaultAsync(u => u.Id == userId);
 
                 if (user == null)
                 {
@@ -206,7 +204,70 @@ namespace Feast.Controllers
                 return Redirect(redirectUrl);
             }
         }
+
+        // This method should be outside of any other methods, at the class level
+        private async Task<string> GetValidAccessToken(string userId)
+        {
+            var user = await _context.Users.Include(u => u.GoogleOAuthToken)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null || user.GoogleOAuthToken == null)
+            {
+                _logger.LogError("User or Google OAuth token not found.");
+                return null;
+            }
+
+            if (user.GoogleOAuthToken.AccessTokenExpiry > DateTime.UtcNow)
+            {
+                // Access token is still valid
+                return user.GoogleOAuthToken.AccessToken;
+            }
+
+            _logger.LogInformation("Access token expired, refreshing...");
+
+            // Access token has expired, use the refresh token to get a new one
+            using (var client = new HttpClient())
+            {
+                var requestContent = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("client_id", _oauthSettings.ClientId),
+                    new KeyValuePair<string, string>("client_secret", _oauthSettings.ClientSecret),
+                    new KeyValuePair<string, string>("refresh_token", user.GoogleOAuthToken.RefreshToken),
+                    new KeyValuePair<string, string>("grant_type", "refresh_token")
+                });
+
+                var tokenResponse = await client.PostAsync(_oauthSettings.TokenUri, requestContent);
+                var responseString = await tokenResponse.Content.ReadAsStringAsync();
+
+                if (!tokenResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"Failed to refresh tokens. Response: {responseString}");
+                    return null;
+                }
+
+                var tokenData = JObject.Parse(responseString);
+                var newAccessToken = tokenData["access_token"]?.ToString();
+                var expiresInSeconds = tokenData["expires_in"]?.ToString();
+
+                _logger.LogInformation($"New Access Token: {newAccessToken}, Expires In: {expiresInSeconds}");
+
+                if (newAccessToken == null)
+                {
+                    _logger.LogError("Invalid token data received.");
+                    return null;
+                }
+
+                var expiresIn = DateTime.UtcNow.AddSeconds(Convert.ToDouble(expiresInSeconds));
+
+                // Update the user's Google OAuth token
+                user.GoogleOAuthToken.AccessToken = newAccessToken;
+                user.GoogleOAuthToken.AccessTokenExpiry = expiresIn;
+                _context.GoogleOAuthTokens.Update(user.GoogleOAuthToken);
+
+                await _context.SaveChangesAsync();
+
+                return newAccessToken;
+            }
+        }
     }
 }
-
-

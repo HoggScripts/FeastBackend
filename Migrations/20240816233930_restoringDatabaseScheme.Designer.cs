@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Feast.Migrations
 {
     [DbContext(typeof(FeastDbContext))]
-    [Migration("20240801161953_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20240816233930_restoringDatabaseScheme")]
+    partial class restoringDatabaseScheme
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -105,7 +105,7 @@ namespace Feast.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Feast.Models.Recipe", b =>
+            modelBuilder.Entity("Feast.Models.GoogleOAuthToken", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -113,37 +113,19 @@ namespace Feast.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("Calories")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("Carbohydrates")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("CookTime")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("EstimatedCost")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("Fat")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Image")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("Protein")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("RecipeName")
+                    b.Property<string>("AccessToken")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Servings")
-                        .HasColumnType("integer");
+                    b.Property<DateTime>("AccessTokenExpiry")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<List<string>>("Steps")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RefreshToken")
                         .IsRequired()
-                        .HasColumnType("text[]");
+                        .HasColumnType("text");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -151,9 +133,10 @@ namespace Feast.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
-                    b.ToTable("Recipes");
+                    b.ToTable("GoogleOAuthTokens");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -288,68 +271,71 @@ namespace Feast.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Feast.Models.Recipe", b =>
+            modelBuilder.Entity("Recipe", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Calories")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Carbohydrates")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CookTime")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("EstimatedCost")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Fat")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Image")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MealType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("Protein")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecipeName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SpicinessLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<List<string>>("Steps")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Recipes");
+                });
+
+            modelBuilder.Entity("Feast.Models.GoogleOAuthToken", b =>
                 {
                     b.HasOne("Feast.Models.ApplicationUser", "User")
-                        .WithMany("Recipes")
-                        .HasForeignKey("UserId")
+                        .WithOne("GoogleOAuthToken")
+                        .HasForeignKey("Feast.Models.GoogleOAuthToken", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.OwnsMany("Feast.Models.Ingredient", "Ingredients", b1 =>
-                        {
-                            b1.Property<int>("RecipeId")
-                                .HasColumnType("integer");
-
-                            b1.Property<int>("Id1")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("integer");
-
-                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id1"));
-
-                            b1.Property<double>("Amount")
-                                .HasColumnType("double precision");
-
-                            b1.Property<int?>("Calories")
-                                .HasColumnType("integer");
-
-                            b1.Property<int?>("Carbohydrates")
-                                .HasColumnType("integer");
-
-                            b1.Property<int?>("EstimatedCost")
-                                .HasColumnType("integer");
-
-                            b1.Property<int?>("Fat")
-                                .HasColumnType("integer");
-
-                            b1.Property<string>("Image")
-                                .IsRequired()
-                                .HasColumnType("text");
-
-                            b1.Property<string>("Name")
-                                .IsRequired()
-                                .HasColumnType("text");
-
-                            b1.Property<List<string>>("PossibleUnits")
-                                .IsRequired()
-                                .HasColumnType("text[]");
-
-                            b1.Property<int?>("Protein")
-                                .HasColumnType("integer");
-
-                            b1.Property<string>("Unit")
-                                .IsRequired()
-                                .HasColumnType("text");
-
-                            b1.HasKey("RecipeId", "Id1");
-
-                            b1.ToTable("Ingredient");
-
-                            b1.WithOwner()
-                                .HasForeignKey("RecipeId");
-                        });
-
-                    b.Navigation("Ingredients");
 
                     b.Navigation("User");
                 });
@@ -405,8 +391,75 @@ namespace Feast.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Recipe", b =>
+                {
+                    b.HasOne("Feast.Models.ApplicationUser", "User")
+                        .WithMany("Recipes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("Feast.Models.Ingredient", "Ingredients", b1 =>
+                        {
+                            b1.Property<int>("RecipeId")
+                                .HasColumnType("integer");
+
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id"));
+
+                            b1.Property<double>("Amount")
+                                .HasColumnType("double precision");
+
+                            b1.Property<int?>("Calories")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("Carbohydrates")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("EstimatedCost")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("Fat")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Image")
+                                .HasColumnType("text");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.Property<List<string>>("PossibleUnits")
+                                .HasColumnType("text[]");
+
+                            b1.Property<int?>("Protein")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Unit")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.HasKey("RecipeId", "Id");
+
+                            b1.ToTable("Ingredient");
+
+                            b1.WithOwner()
+                                .HasForeignKey("RecipeId");
+                        });
+
+                    b.Navigation("Ingredients");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Feast.Models.ApplicationUser", b =>
                 {
+                    b.Navigation("GoogleOAuthToken")
+                        .IsRequired();
+
                     b.Navigation("Recipes");
                 });
 #pragma warning restore 612, 618

@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Feast.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class restoringDatabaseScheme : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -163,6 +163,29 @@ namespace Feast.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "GoogleOAuthTokens",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    AccessToken = table.Column<string>(type: "text", nullable: false),
+                    RefreshToken = table.Column<string>(type: "text", nullable: false),
+                    AccessTokenExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GoogleOAuthTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_GoogleOAuthTokens_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Recipes",
                 columns: table => new
                 {
@@ -173,6 +196,8 @@ namespace Feast.Migrations
                     Steps = table.Column<List<string>>(type: "text[]", nullable: false),
                     CookTime = table.Column<int>(type: "integer", nullable: false),
                     Servings = table.Column<int>(type: "integer", nullable: false),
+                    MealType = table.Column<string>(type: "text", nullable: false),
+                    SpicinessLevel = table.Column<int>(type: "integer", nullable: false),
                     Calories = table.Column<int>(type: "integer", nullable: true),
                     Fat = table.Column<int>(type: "integer", nullable: true),
                     Protein = table.Column<int>(type: "integer", nullable: true),
@@ -195,11 +220,11 @@ namespace Feast.Migrations
                 name: "Ingredient",
                 columns: table => new
                 {
-                    RecipeId = table.Column<int>(type: "integer", nullable: false),
-                    Id1 = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RecipeId = table.Column<int>(type: "integer", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    Image = table.Column<string>(type: "text", nullable: false),
+                    Image = table.Column<string>(type: "text", nullable: true),
                     Amount = table.Column<double>(type: "double precision", nullable: false),
                     Unit = table.Column<string>(type: "text", nullable: false),
                     Calories = table.Column<int>(type: "integer", nullable: true),
@@ -207,11 +232,11 @@ namespace Feast.Migrations
                     Protein = table.Column<int>(type: "integer", nullable: true),
                     Carbohydrates = table.Column<int>(type: "integer", nullable: true),
                     EstimatedCost = table.Column<int>(type: "integer", nullable: true),
-                    PossibleUnits = table.Column<List<string>>(type: "text[]", nullable: false)
+                    PossibleUnits = table.Column<List<string>>(type: "text[]", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Ingredient", x => new { x.RecipeId, x.Id1 });
+                    table.PrimaryKey("PK_Ingredient", x => new { x.RecipeId, x.Id });
                     table.ForeignKey(
                         name: "FK_Ingredient_Recipes_RecipeId",
                         column: x => x.RecipeId,
@@ -258,6 +283,12 @@ namespace Feast.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_GoogleOAuthTokens_UserId",
+                table: "GoogleOAuthTokens",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Recipes_UserId",
                 table: "Recipes",
                 column: "UserId");
@@ -280,6 +311,9 @@ namespace Feast.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "GoogleOAuthTokens");
 
             migrationBuilder.DropTable(
                 name: "Ingredient");

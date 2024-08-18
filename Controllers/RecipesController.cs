@@ -131,114 +131,40 @@ namespace Feast.Controllers
         {
             _logger.LogInformation("Attempting to delete recipe with ID: {RecipeId}", id);
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var recipe = _context.Recipes.FirstOrDefault(r => r.Id == id && r.UserId == userId);
-
-            if (recipe == null)
+            try
             {
-                return NotFound();
+                var userId = User.FindFirstValue("UserId");
+                if (userId == null)
+                {
+                    _logger.LogWarning("User ID could not be found in the claims.");
+                    return Unauthorized();
+                }
+
+                var recipe = _context.Recipes.FirstOrDefault(r => r.Id == id && r.UserId == userId);
+
+                if (recipe == null)
+                {
+                    _logger.LogWarning("Recipe with ID: {RecipeId} not found for User ID: {UserId}", id, userId);
+                    return NotFound();
+                }
+
+                _context.Recipes.Remove(recipe);
+                _context.SaveChanges();
+
+                _logger.LogInformation("Recipe with ID: {RecipeId} successfully deleted for User ID: {UserId}", id, userId);
+                return NoContent();
             }
-
-            _context.Recipes.Remove(recipe);
-            _context.SaveChanges();
-
-            return NoContent();
-        }
-        [HttpGet("search/spiciness")]
-        public IActionResult SearchBySpicinessLevel(int level)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var recipes = _context.Recipes
-                .Where(r => r.UserId == userId && r.SpicinessLevel >= level)
-                .ToList();
-
-            return Ok(recipes);
-        }
-
-        [HttpGet("search/mealtype")]
-        public IActionResult SearchByMealType(string mealType)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var recipes = _context.Recipes
-                .Where(r => r.UserId == userId && r.MealType.ToLower() == mealType.ToLower())
-                .ToList();
-
-            return Ok(recipes);
-        }
-
-        [HttpGet("search/calories")]
-        public IActionResult SearchByCaloriesRange(int min, int max)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var recipes = _context.Recipes
-                .Where(r => r.UserId == userId && r.Calories >= min && r.Calories <= max)
-                .ToList();
-
-            return Ok(recipes);
-        }
-
-        [HttpGet("search/cooktime")]
-        public IActionResult SearchByCookTime(int max)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var recipes = _context.Recipes
-                .Where(r => r.UserId == userId && r.CookTime <= max)
-                .ToList();
-
-            return Ok(recipes);
-        }
-
-        [HttpGet("search")]
-        public IActionResult SearchByMultipleCriteria(string? mealType, int? minSpiciness, int? maxCalories, int? maxCookTime)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var query = _context.Recipes.AsQueryable();
-
-            if (!string.IsNullOrEmpty(mealType))
+            catch (Exception ex)
             {
-                query = query.Where(r => r.UserId == userId && r.MealType.ToLower() == mealType.ToLower());
+                _logger.LogError(ex, "An error occurred while attempting to delete recipe with ID: {RecipeId}", id);
+                return StatusCode(500, "An error occurred while processing your request.");
             }
-
-            if (minSpiciness.HasValue)
-            {
-                query = query.Where(r => r.SpicinessLevel >= minSpiciness.Value);
-            }
-
-            if (maxCalories.HasValue)
-            {
-                query = query.Where(r => r.Calories <= maxCalories.Value);
-            }
-
-            if (maxCookTime.HasValue)
-            {
-                query = query.Where(r => r.CookTime <= maxCookTime.Value);
-            }
-
-            var recipes = query.ToList();
-            return Ok(recipes);
         }
 
-        [HttpGet("search/protein")]
-        public IActionResult SearchByProtein(int minProtein)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var recipes = _context.Recipes
-                .Where(r => r.UserId == userId && r.Protein >= minProtein)
-                .ToList();
 
-            return Ok(recipes);
-        }
 
-        [HttpGet("search/cost")]
-        public IActionResult SearchByCostRange(int minCost, int maxCost)
-        {
-            var userId = User.FindFirstValue("UserId");
-            var recipes = _context.Recipes
-                .Where(r => r.UserId == userId && r.EstimatedCost >= minCost && r.EstimatedCost <= maxCost)
-                .ToList();
 
-            return Ok(recipes);
-        }
+
     }
 }
     

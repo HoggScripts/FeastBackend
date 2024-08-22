@@ -45,12 +45,10 @@ namespace Feast.Services
             );
 
             // Logging the key, issuer, audience, and the generated token
-            _logger.LogInformation("JWT Signing Key: {SigningKey}", jwtSettings.Secret);
-            _logger.LogInformation("JWT Issuer: {Issuer}", jwtSettings.Issuer);
-            _logger.LogInformation("JWT Audience: {Audience}", jwtSettings.Audience);
+
 
             var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);
-            _logger.LogInformation("Generated JWT Token: {Token}", generatedToken);
+          
 
             return generatedToken;
         }

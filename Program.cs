@@ -70,9 +70,7 @@ builder.Services.AddAuthentication(options =>
     // Log the key being used for validation
     var serviceProvider = builder.Services.BuildServiceProvider();
     var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("JWT Validation Signing Key: {SigningKey}", jwtSettings.Secret);
-    logger.LogInformation("JWT Validation Issuer: {Issuer}", jwtSettings.Issuer);
-    logger.LogInformation("JWT Validation Audience: {Audience}", jwtSettings.Audience);
+
 });
 
 builder.Services.AddCors(options =>
@@ -95,6 +93,7 @@ builder.Services.AddSession(options =>
 });
 
 builder.Services.Configure<OAuthSettings>(builder.Configuration.GetSection("OAuth"));
+builder.Services.AddScoped<GoogleCalendarService>();
 
 var app = builder.Build();
 

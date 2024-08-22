@@ -2,6 +2,7 @@ using MimeKit;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Feast.Services
 {
@@ -117,6 +118,99 @@ namespace Feast.Services
                         </p>
                         <a href='{confirmationLink}' class='btn'>Confirm Email</a>
                         <p>If you did not register for this account, please ignore this email.</p>
+                    </div>
+                    <div class='footer'>
+                        <p>&copy; 2024 Feast. All rights reserved.</p>
+                        <p><a href='#'>Unsubscribe</a></p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+        }
+
+        public async Task SendShoppingListEmailAsync(string to, string username, List<string> shoppingList)
+        {
+            var subject = "Your Feast Shopping List";
+            var body = BuildShoppingListEmailBody(username, shoppingList);
+            await SendEmailAsync(to, subject, body);
+        }
+
+        private string BuildShoppingListEmailBody(string username, List<string> shoppingList)
+        {
+            var itemsHtml = string.Join("", shoppingList.Select(item => $"<li>{item}</li>"));
+
+            return $@"
+            <!DOCTYPE html>
+            <html lang='en'>
+            <head>
+                <meta charset='UTF-8'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background-color: #f6f6f6;
+                        margin: 0;
+                        padding: 20px;
+                    }}
+                    .email-container {{
+                        max-width: 600px;
+                        margin: auto;
+                        background-color: #ffffff;
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                    }}
+                    .header {{
+                        background-color: #007BFF;
+                        color: white;
+                        padding: 10px 20px;
+                        text-align: center;
+                        border-radius: 8px 8px 0 0;
+                    }}
+                    .content {{
+                        padding: 20px;
+                        line-height: 1.6;
+                        color: #333333;
+                    }}
+                    .content h1 {{
+                        color: #007BFF;
+                    }}
+                    .footer {{
+                        padding: 10px 20px;
+                        text-align: center;
+                        font-size: 12px;
+                        color: #777777;
+                    }}
+                    .footer a {{
+                        color: #007BFF;
+                        text-decoration: none;
+                    }}
+                    .shopping-list {{
+                        margin: 20px 0;
+                        padding: 0;
+                        list-style: none;
+                    }}
+                    .shopping-list li {{
+                        background-color: #f1f1f1;
+                        margin: 5px 0;
+                        padding: 10px;
+                        border-radius: 5px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class='email-container'>
+                    <div class='header'>
+                        <h1>Hi {username}, here's your shopping list!</h1>
+                    </div>
+                    <div class='content'>
+                        <p>
+                            Your carefully planned meals are just a shopping trip away. Below is your shopping list for the upcoming week:
+                        </p>
+                        <ul class='shopping-list'>
+                            {itemsHtml}
+                        </ul>
+                        <p>Happy cooking!</p>
                     </div>
                     <div class='footer'>
                         <p>&copy; 2024 Feast. All rights reserved.</p>

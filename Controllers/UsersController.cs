@@ -38,6 +38,51 @@ namespace Feast.Controllers
             _configuration = configuration;
             _tokenService = tokenService;
         }
+        
+        [HttpPost("update-meal-times")]
+        public async Task<IActionResult> UpdateMealTimes([FromBody] UpdateMealTimesModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state: {ModelStateErrors}", ModelState);
+                return BadRequest(ModelState);
+            }
+
+            // Get the currently authenticated user
+            var userId = User.FindFirstValue("UserId");
+            _logger.LogInformation($"User ID from claims: {userId}");
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                _logger.LogWarning($"User not found with ID: {userId}");
+                return NotFound("User not found.");
+            }
+
+            // Update the user's meal times
+            user.BreakfastTime = model.BreakfastTime;
+            user.LunchTime = model.LunchTime;
+            user.DinnerTime = model.DinnerTime;
+
+            _logger.LogInformation($"Updating meal times for user {userId}: Breakfast - {user.BreakfastTime}, Lunch - {user.LunchTime}, Dinner - {user.DinnerTime}");
+
+            // Save the changes to the database
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"Meal times updated successfully for user {userId}");
+                return Ok("Meal times updated successfully.");
+            }
+
+            // If the update failed, return the error messages
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            _logger.LogError($"Failed to update meal times for user {userId}: {errors}");
+            return BadRequest($"Failed to update meal times: {errors}");
+        }
+
+
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
@@ -205,7 +250,7 @@ namespace Feast.Controllers
 
             if (string.IsNullOrEmpty(refreshToken))
             {
-                _logger.LogWarning("Refresh token is missing.");
+               
                 return Unauthorized("Refresh token is missing.");
             }
 
@@ -213,7 +258,7 @@ namespace Feast.Controllers
 
             if (user == null)
             {
-                _logger.LogWarning("Invalid refresh token.");
+           
                 return Unauthorized("Invalid refresh token.");
             }
 
@@ -221,13 +266,13 @@ namespace Feast.Controllers
 
             if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
-                _logger.LogWarning("Expired refresh token.");
+             
                 return Unauthorized("Expired refresh token.");
             }
 
             var accessToken = _tokenService.GenerateJwtToken(user);
 
-            _logger.LogInformation($"Generated new access token: {accessToken}");
+  
 
             return Ok(new { accessToken });
         }
@@ -258,7 +303,10 @@ namespace Feast.Controllers
                 Username = user.UserName,
                 Email = user.Email,
                 FirstName = user.FirstName,
-                LastName = user.LastName
+                LastName = user.LastName,
+                BreakfastTime = user.BreakfastTime, // Add this line
+                LunchTime = user.LunchTime, // Add this line
+                DinnerTime = user.DinnerTime // Add this line
             };
 
             return Ok(userModel);
@@ -268,7 +316,7 @@ namespace Feast.Controllers
         public IActionResult ProtectedEndpoint()
         {
             var userId = User.FindFirstValue("UserId");
-            _logger.LogInformation("UserId claim retrieved in protected endpoint: {UserId}", userId);
+          
 
             var allClaims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
             _logger.LogInformation("All Claims: {@AllClaims}", allClaims);

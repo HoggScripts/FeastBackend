@@ -51,7 +51,7 @@ namespace Feast.Models
             var responseContent = await response.Content.ReadAsStringAsync();
             var detailApiResponse = JsonConvert.DeserializeObject<SpoonacularApiResponses.SpoonacularIngredientDetailResponse>(responseContent);
 
-            EstimatedCost = (int?)detailApiResponse.EstimatedCost?.Value / 100;
+            EstimatedCost = (int?)detailApiResponse.EstimatedCost?.Value;
             PossibleUnits = detailApiResponse.PossibleUnits;
 
             if (detailApiResponse.Nutrition != null)
@@ -88,7 +88,7 @@ namespace Feast.Models
             var responseContent = await response.Content.ReadAsStringAsync();
             var detailApiResponse = JsonConvert.DeserializeObject<SpoonacularApiResponses.SpoonacularIngredientDetailResponse>(responseContent);
 
-            EstimatedCost = (int?)detailApiResponse.EstimatedCost?.Value / 100;
+            EstimatedCost = (int?)detailApiResponse.EstimatedCost?.Value;
         }
     }
 }

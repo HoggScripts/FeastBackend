@@ -39,6 +39,40 @@ namespace Feast.Controllers
             _tokenService = tokenService;
         }
         
+        [HttpDelete("delete-user")]
+        public async Task<IActionResult> DeleteUser()
+        {
+            // Get the currently authenticated user ID from the claims
+            var userId = User.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Delete user attempt without valid UserId in claims.");
+                return Unauthorized("User not found.");
+            }
+
+            // Find the user in the database
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning($"User not found with ID: {userId}");
+                return NotFound("User not found.");
+            }
+
+            // Delete the user
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"User {userId} deleted successfully.");
+                return Ok("User deleted successfully.");
+            }
+
+            // If the deletion failed, return the error messages
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            _logger.LogError($"Failed to delete user {userId}: {errors}");
+            return BadRequest($"Failed to delete user: {errors}");
+        }
+        
+        
         [HttpPost("update-meal-times")]
         public async Task<IActionResult> UpdateMealTimes([FromBody] UpdateMealTimesModel model)
         {

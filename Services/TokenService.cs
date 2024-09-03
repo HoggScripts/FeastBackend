@@ -18,7 +18,7 @@ namespace Feast.Services
         public TokenService(IConfiguration configuration, ILogger<TokenService> logger) // Inject the logger here
         {
             _configuration = configuration;
-            _logger = logger; // Assign the injected logger
+            _logger = logger; 
         }
 
         public string GenerateJwtToken(ApplicationUser user)
@@ -29,8 +29,8 @@ namespace Feast.Services
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.UserName), // Keep the username as the NameIdentifier
-                new Claim("UserId", user.Id) // Add a custom claim for the user ID (GUID)
+                new Claim(ClaimTypes.NameIdentifier, user.UserName), 
+                new Claim("UserId", user.Id) 
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret));
@@ -40,11 +40,11 @@ namespace Feast.Services
                 issuer: jwtSettings.Issuer,
                 audience: jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(20), // Adjust token lifetime as needed
+                expires: DateTime.UtcNow.AddMinutes(20), 
                 signingCredentials: creds
             );
 
-            // Logging the key, issuer, audience, and the generated token
+            
 
 
             var generatedToken = new JwtSecurityTokenHandler().WriteToken(token);

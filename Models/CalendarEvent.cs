@@ -4,13 +4,13 @@ namespace Feast.Models
 {
     public class CalendarEvent
     {
-        public string Title { get; set; } // The title or summary of the event
-        public DateTime StartTime { get; set; } // The start time of the event in the user's local time
-        public DateTime EndTime { get; set; } // The end time of the event in the user's local time
-        public string Description { get; set; } // A description or notes for the event
-        public string TimeZone { get; set; } // The timezone of the user
+        public string Title { get; set; } 
+        public DateTime StartTime { get; set; } 
+        public DateTime EndTime { get; set; } 
+        public string Description { get; set; } 
+        public string TimeZone { get; set; } 
 
-        // Constructor to easily create a new CalendarEvent
+
         public CalendarEvent(string title, DateTime startTime, DateTime endTime, string description, string timeZone)
         {
             Title = title;
@@ -20,6 +20,6 @@ namespace Feast.Models
             TimeZone = timeZone;
         }
 
-        public CalendarEvent() { } // Parameterless constructor for serialization
+        public CalendarEvent() { } 
     }
 }

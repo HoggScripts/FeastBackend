@@ -12,11 +12,11 @@ namespace Feast.Models
         public string Name { get; set; }
         public string? Image { get; set; }
         
-        // User Selected Properties
+        // User selected
         public double Amount { get; set; }
         public string Unit { get; set; }
         
-        // Detailed Information
+        // Detailed info
         public int? Calories { get; set; }
         public int? Fat { get; set; }
         public int? Protein { get; set; }

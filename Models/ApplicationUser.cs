@@ -11,15 +11,15 @@ namespace Feast.Models
         public string RefreshToken { get; set; } = string.Empty;
         public DateTime RefreshTokenExpiryTime { get; set; } = DateTime.UtcNow;
 
-        // Add a collection of recipes
+  
         public ICollection<Recipe> Recipes { get; set; }
         
-        // Navigation property for related Google OAuth tokens
+
         public GoogleOAuthToken GoogleOAuthToken { get; set; }
 
         // Meal time settings with default values
-        public TimeSpan BreakfastTime { get; set; } = TimeSpan.FromHours(8); // Default to 8:00 AM
-        public TimeSpan LunchTime { get; set; } = TimeSpan.FromHours(12);    // Default to 12:00 PM
-        public TimeSpan DinnerTime { get; set; } = TimeSpan.FromHours(18);   // Default to 6:00 PM
+        public TimeSpan BreakfastTime { get; set; } = TimeSpan.FromHours(8); // Default to 8
+        public TimeSpan LunchTime { get; set; } = TimeSpan.FromHours(12);    // Default to 12
+        public TimeSpan DinnerTime { get; set; } = TimeSpan.FromHours(18);   // Default to 6
     }
 }

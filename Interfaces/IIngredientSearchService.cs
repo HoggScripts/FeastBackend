@@ -7,7 +7,7 @@ namespace Feast.Interfaces
     public interface IIngredientSearchService
     {
         Task<IEnumerable<Ingredient>> BasicIngredientsSearchAsync(string query);
-        Task<IEnumerable<Ingredient>> AutocompleteIngredientsAsync(string query); // Add this line
+        Task<IEnumerable<Ingredient>> AutocompleteIngredientsAsync(string query); 
         Task FetchPossibleUnitsAsync(Ingredient ingredient);
         Task<Ingredient> GetIngredientDetailsAsync(int id, double amount, string unit);
     }

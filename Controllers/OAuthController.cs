@@ -57,7 +57,7 @@ namespace Feast.Controllers
                 return Unauthorized(new { message = "User is not authenticated or UserId is missing." });
             }
 
-            // Check if the user has a Google OAuth token in the database
+            // Check if the user has a Google OAuth token 
             var user = await _context.Users.Include(u => u.GoogleOAuthToken)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
@@ -107,7 +107,7 @@ namespace Feast.Controllers
                 $"&response_type=code" +
                 $"&scope=https://www.googleapis.com/auth/calendar" +
                 $"&access_type=offline" +
-                $"&prompt=consent"; // Force Google to prompt for consent
+                $"&prompt=consent"; 
 
             _logger.LogInformation($"Redirecting to: {authorizationUrl}");
 
@@ -205,7 +205,7 @@ namespace Feast.Controllers
             }
         }
 
-        // This method should be outside of any other methods, at the class level
+  
         private async Task<string> GetValidAccessToken(string userId)
         {
             var user = await _context.Users.Include(u => u.GoogleOAuthToken)
@@ -219,13 +219,13 @@ namespace Feast.Controllers
 
             if (user.GoogleOAuthToken.AccessTokenExpiry > DateTime.UtcNow)
             {
-                // Access token is still valid
+          
                 return user.GoogleOAuthToken.AccessToken;
             }
 
             _logger.LogInformation("Access token expired, refreshing...");
 
-            // Access token has expired, use the refresh token to get a new one
+
             using (var client = new HttpClient())
             {
                 var requestContent = new FormUrlEncodedContent(new[]
@@ -259,7 +259,7 @@ namespace Feast.Controllers
 
                 var expiresIn = DateTime.UtcNow.AddSeconds(Convert.ToDouble(expiresInSeconds));
 
-                // Update the user's Google OAuth token
+    
                 user.GoogleOAuthToken.AccessToken = newAccessToken;
                 user.GoogleOAuthToken.AccessTokenExpiry = expiresIn;
                 _context.GoogleOAuthTokens.Update(user.GoogleOAuthToken);

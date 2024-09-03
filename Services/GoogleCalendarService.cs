@@ -22,7 +22,8 @@ public class GoogleCalendarService
         _logger = logger;
     }
 
-    // Get a valid access token, refreshing if necessary
+ 
+    
     public async Task<string> GetValidAccessToken(string userId)
     {
         var user = await _context.Users.Include(u => u.GoogleOAuthToken)
@@ -153,7 +154,7 @@ public class GoogleCalendarService
 
         foreach (var scheduledRecipe in allRecipes)
         {
-            // Determine the meal time based on meal type
+            // calculate the meal time based on meal type
             TimeSpan mealTime = scheduledRecipe.MealType switch
             {
                 "Breakfast" => user.BreakfastTime,
@@ -166,7 +167,7 @@ public class GoogleCalendarService
             var scheduledDate = scheduledRecipe.Date.Date;
             var startTime = scheduledDate + mealTime;
 
-            // Assuming you have the cook time in the user's recipe data
+      
             var cookTime = GetCookTimeForRecipe(scheduledRecipe.RecipeName);
             var endTime = startTime.AddMinutes(cookTime);
 
@@ -191,14 +192,14 @@ public class GoogleCalendarService
         return true;
     }
 
-    // Helper method to get the cook time for a recipe
+    // elper method
     private int GetCookTimeForRecipe(string recipeName)
     {
         var recipe = _context.Recipes.FirstOrDefault(r => r.RecipeName == recipeName);
-        return recipe?.CookTime ?? 60; // Default to 60 minutes if not found
+        return recipe?.CookTime ?? 60; // Default to 60 minutes 
     }
 
-    // Error logging method
+
     public void LogError(string message)
     {
         _logger.LogError(message);

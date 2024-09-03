@@ -10,7 +10,7 @@ public class ScheduledRecipesRequest
 
 public class ScheduledRecipe
 {
-    public string RecipeName { get; set; } // Name of the recipe
-    public DateTime Date { get; set; } // Date the recipe is scheduled
+    public string RecipeName { get; set; } 
+    public DateTime Date { get; set; } 
     public string MealType { get; set; }
 }

@@ -26,7 +26,7 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
 {
     try
     {
-        // Log the entire incoming DTO, especially the instructions
+
         _logger.LogInformation("Received CreateRecipeDto with Instructions: {@CreateRecipeDto}, Instructions: {@Instructions}", dto, dto.Instructions);
 
         var userId = User.FindFirstValue("UserId");
@@ -45,7 +45,7 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
 
         _logger.LogInformation("User ID is: {UserId}", userId);
 
-        // Convert CreateIngredientDto to Ingredient and log each ingredient
+
         var ingredients = dto.Ingredients.Select(i => 
         {
             var ingredient = new Ingredient
@@ -72,7 +72,7 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
             dto.RecipeName, 
             dto.Image, 
             ingredients, 
-            dto.Instructions, // Map instructions to steps here
+            dto.Instructions, 
             dto.CookTime, 
             dto.Servings, 
             dto.MealType, 
@@ -80,7 +80,7 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
             userId
         );
 
-        // Log the steps before processing
+   
         _logger.LogInformation("Received Instructions (as Steps): {@Steps}", dto.Instructions);
 
         int recipeStepsCount = recipe.Steps.Count;
@@ -89,7 +89,7 @@ public IActionResult CreateRecipe([FromBody] CreateRecipeDto dto)
             recipe.Steps.RemoveAt(recipeStepsCount - 1);
         }
 
-        // Log the final processed steps
+ 
         _logger.LogInformation("Final Steps after processing: {@Steps}", recipe.Steps);
 
         _context.Recipes.Add(recipe);

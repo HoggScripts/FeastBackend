@@ -13,7 +13,7 @@ namespace Feast.Controllers
     {
         private readonly EmailService _emailService;
         private readonly ILogger<EmailController> _logger;
-        private readonly FeastDbContext _context; // Add DbContext to fetch user data
+        private readonly FeastDbContext _context; // Add for user datas
 
         public EmailController(EmailService emailService, ILogger<EmailController> logger, FeastDbContext context)
         {
@@ -32,7 +32,7 @@ namespace Feast.Controllers
                 return Unauthorized(new { message = "User is not authenticated or UserId is missing." });
             }
 
-            // Fetch the user's email from the database using the UserId
+          
             var user = await _context.Users.FindAsync(userId);
             if (user == null || string.IsNullOrEmpty(user.Email))
             {

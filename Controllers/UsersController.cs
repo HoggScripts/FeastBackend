@@ -42,7 +42,7 @@ namespace Feast.Controllers
         [HttpDelete("delete-user")]
         public async Task<IActionResult> DeleteUser()
         {
-            // Get the currently authenticated user ID from the claims
+     
             var userId = User.FindFirstValue("UserId");
             if (string.IsNullOrEmpty(userId))
             {
@@ -50,7 +50,7 @@ namespace Feast.Controllers
                 return Unauthorized("User not found.");
             }
 
-            // Find the user in the database
+
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
@@ -58,7 +58,7 @@ namespace Feast.Controllers
                 return NotFound("User not found.");
             }
 
-            // Delete the user
+  
             var result = await _userManager.DeleteAsync(user);
             if (result.Succeeded)
             {
@@ -66,7 +66,7 @@ namespace Feast.Controllers
                 return Ok("User deleted successfully.");
             }
 
-            // If the deletion failed, return the error messages
+   
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             _logger.LogError($"Failed to delete user {userId}: {errors}");
             return BadRequest($"Failed to delete user: {errors}");
@@ -82,7 +82,7 @@ namespace Feast.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Get the currently authenticated user
+
             var userId = User.FindFirstValue("UserId");
             _logger.LogInformation($"User ID from claims: {userId}");
 
@@ -94,14 +94,14 @@ namespace Feast.Controllers
                 return NotFound("User not found.");
             }
 
-            // Update the user's meal times
+     
             user.BreakfastTime = model.BreakfastTime;
             user.LunchTime = model.LunchTime;
             user.DinnerTime = model.DinnerTime;
 
             _logger.LogInformation($"Updating meal times for user {userId}: Breakfast - {user.BreakfastTime}, Lunch - {user.LunchTime}, Dinner - {user.DinnerTime}");
 
-            // Save the changes to the database
+
             var result = await _userManager.UpdateAsync(user);
 
             if (result.Succeeded)
@@ -110,7 +110,7 @@ namespace Feast.Controllers
                 return Ok("Meal times updated successfully.");
             }
 
-            // If the update failed, return the error messages
+
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             _logger.LogError($"Failed to update meal times for user {userId}: {errors}");
             return BadRequest($"Failed to update meal times: {errors}");
@@ -143,7 +143,7 @@ namespace Feast.Controllers
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 RefreshToken = _tokenService.GenerateRefreshToken(),
-                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) // Set an initial expiry date
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7) 
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -229,15 +229,15 @@ namespace Feast.Controllers
             {
                 var refreshToken = _tokenService.GenerateRefreshToken();
                 user.RefreshToken = refreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30); // Longer expiry for "Remember Me"
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30);
                 await _userManager.UpdateAsync(user);
 
                 var cookieOptions = new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = false, // should be true in production
+                    Secure = false, 
                     SameSite = SameSiteMode.Strict,
-                    Expires = DateTime.UtcNow.AddDays(30) // Longer expiry for "Remember Me"
+                    Expires = DateTime.UtcNow.AddDays(30) 
                 };
                 Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
             }
@@ -267,7 +267,7 @@ namespace Feast.Controllers
             Response.Cookies.Append("refreshToken", "", new CookieOptions
             {
                 HttpOnly = true,
-                Secure = false, // should be true in production
+                Secure = false, // should be true???
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTime.UtcNow.AddDays(-1) 
             });
@@ -338,9 +338,9 @@ namespace Feast.Controllers
                 Email = user.Email,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                BreakfastTime = user.BreakfastTime, // Add this line
-                LunchTime = user.LunchTime, // Add this line
-                DinnerTime = user.DinnerTime // Add this line
+                BreakfastTime = user.BreakfastTime, 
+                LunchTime = user.LunchTime, 
+                DinnerTime = user.DinnerTime 
             };
 
             return Ok(userModel);

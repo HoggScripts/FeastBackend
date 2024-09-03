@@ -11,7 +11,7 @@ public class Recipe
     public List<string> Steps { get; set; } = new List<string>();
     public int CookTime { get; set; }
     public int Servings { get; set; }
-    public string MealType { get; set; } // Changed to string
+    public string MealType { get; set; } 
     public int SpicinessLevel { get; set; }
     public int? Calories { get; private set; }
     public int? Fat { get; private set; }

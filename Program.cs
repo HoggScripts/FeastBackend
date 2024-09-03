@@ -87,9 +87,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // Set session timeout
+    // configure sessions
+    options.IdleTimeout = TimeSpan.FromMinutes(30); 
     options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true; // Make the session cookie essential
+    options.Cookie.IsEssential = true; 
 });
 
 builder.Services.Configure<OAuthSettings>(builder.Configuration.GetSection("OAuth"));
@@ -108,7 +109,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Enable session before MVC middleware
+// Enable session
 app.UseSession();
 
 app.MapControllers();

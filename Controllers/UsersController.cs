@@ -160,7 +160,7 @@ namespace Feast.Controllers
 
             _logger.LogInformation("Email confirmation token generated for {Email}: {Token}", model.Email, encodedToken);
 
-            // Using SendRegistrationEmailAsync method instead of SendEmailAsync
+
             await _emailService.SendRegistrationEmailAsync(user.Email, model.Username, confirmationLink);
 
             _logger.LogInformation("Registration successful for email: {Email}. Confirmation email sent.", model.Email);
@@ -192,7 +192,7 @@ namespace Feast.Controllers
             if (result.Succeeded)
             {
                 _logger.LogInformation($"Email confirmed successfully for {email}");
-                return Ok("Email confirmed successfully.");
+                return Redirect($"http://localhost:5173/landing-page");
             }
 
             _logger.LogWarning(

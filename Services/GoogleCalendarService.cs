@@ -22,8 +22,6 @@ public class GoogleCalendarService
         _logger = logger;
     }
 
- 
-    
     public async Task<string> GetValidAccessToken(string userId)
     {
         var user = await _context.Users.Include(u => u.GoogleOAuthToken)
@@ -85,7 +83,7 @@ public class GoogleCalendarService
         }
     }
 
-    // Add an event to the user's Google Calendar
+  
     public async Task<bool> AddEventToGoogleCalendar(string userId, CalendarEvent eventModel)
     {
         var accessToken = await GetValidAccessToken(userId);
@@ -100,19 +98,32 @@ public class GoogleCalendarService
         {
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
+         
+            var utcStartTime = eventModel.StartTime.ToUniversalTime();
+            var utcEndTime = eventModel.EndTime.ToUniversalTime();
+
+         
+            _logger.LogInformation("Adding event to Google Calendar:");
+            _logger.LogInformation($"Title: {eventModel.Title}");
+            _logger.LogInformation($"Start Time (Local): {eventModel.StartTime}");
+            _logger.LogInformation($"End Time (Local): {eventModel.EndTime}");
+            _logger.LogInformation($"Start Time (UTC): {utcStartTime}");
+            _logger.LogInformation($"End Time (UTC): {utcEndTime}");
+            _logger.LogInformation($"TimeZone: {eventModel.TimeZone}");
+
             var calendarEvent = new
             {
                 summary = eventModel.Title,
                 description = eventModel.Description,
                 start = new
                 {
-                    dateTime = eventModel.StartTime.ToString("o"),
-                    timeZone = eventModel.TimeZone
+                    dateTime = utcStartTime.ToString("o"), 
+                    timeZone = eventModel.TimeZone 
                 },
                 end = new
                 {
-                    dateTime = eventModel.EndTime.ToString("o"),
-                    timeZone = eventModel.TimeZone
+                    dateTime = utcEndTime.ToString("o"), // Send as UTC
+                    timeZone = eventModel.TimeZone 
                 }
             };
 
@@ -131,7 +142,7 @@ public class GoogleCalendarService
         }
     }
 
-    // Schedule recipes to the user's Google Calendar
+   // Schedule recipes for google
     public async Task<bool> ScheduleRecipesToGoogleCalendar(string userId, ScheduledRecipesRequest request)
     {
         var accessToken = await GetValidAccessToken(userId);
@@ -165,11 +176,19 @@ public class GoogleCalendarService
 
             // Combine the scheduled date and meal time
             var scheduledDate = scheduledRecipe.Date.Date;
-            var startTime = scheduledDate + mealTime;
+            var startTime = DateTime.SpecifyKind(scheduledDate + mealTime, DateTimeKind.Local); // Specify as Local time
+            var utcStartTime = startTime.ToUniversalTime(); // Convert to UTC
 
-      
+            
+            _logger.LogInformation($"Scheduling Recipe: {scheduledRecipe.RecipeName}");
+            _logger.LogInformation($"Scheduled Date: {scheduledDate}, Meal Time: {mealTime}");
+            _logger.LogInformation($"Start Time (Local): {startTime}");
+            _logger.LogInformation($"Start Time (UTC): {utcStartTime}");
+
             var cookTime = GetCookTimeForRecipe(scheduledRecipe.RecipeName);
-            var endTime = startTime.AddMinutes(cookTime);
+            var endTime = utcStartTime.AddMinutes(cookTime);
+
+            _logger.LogInformation($"End Time (UTC): {endTime}, Cook Time: {cookTime} minutes");
 
             var calendarEvent = new CalendarEvent
             {
@@ -192,16 +211,10 @@ public class GoogleCalendarService
         return true;
     }
 
-    // elper method
+
     private int GetCookTimeForRecipe(string recipeName)
     {
         var recipe = _context.Recipes.FirstOrDefault(r => r.RecipeName == recipeName);
-        return recipe?.CookTime ?? 60; // Default to 60 minutes 
-    }
-
-
-    public void LogError(string message)
-    {
-        _logger.LogError(message);
+        return recipe?.CookTime ?? 1; // Default to 1 minutes 
     }
 }
